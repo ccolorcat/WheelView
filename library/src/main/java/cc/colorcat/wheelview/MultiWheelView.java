@@ -24,6 +24,8 @@ import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 
 import java.util.ArrayList;
@@ -38,7 +40,7 @@ public class MultiWheelView extends LinearLayout {
     private int mCount;
     private WheelView[] mViews;
     private Object[] mData;
-    private OnSelectedChangeListener mListener;
+    private List<OnSelectedChangeListener> mListeners;
 
     public MultiWheelView(Context context) {
         super(context);
@@ -74,20 +76,32 @@ public class MultiWheelView extends LinearLayout {
         mViews = new WheelView[mCount];
         for (int i = 0; i < mCount; ++i) {
             WheelView view = (WheelView) inflater.inflate(layout, this, false);
-            view.setOnItemSelectedListener(i != mCount - 1 ? new WheelViewSelectedListener(i) : new LastWheelViewSelectedListener());
+            view.addOnItemSelectedListener(i != mCount - 1 ? new WheelViewSelectedListener(i) : new LastWheelViewSelectedListener());
             view.setViewBinder(new MultiViewBinder(i));
-            addView(view);
+            super.addView(view);
             mViews[i] = view;
             mData[i] = new ArrayList<Node>();
         }
     }
 
-    public void setOnSelectedChangeListener(OnSelectedChangeListener listener) {
-        mListener = listener;
+    @Override
+    public void addView(View child, int index, ViewGroup.LayoutParams params) {
+        throw new UnsupportedOperationException();
     }
 
-    public OnSelectedChangeListener getOnSelectedChangeListener() {
-        return mListener;
+    public void addOnSelectedChangeListener(OnSelectedChangeListener listener) {
+        if (listener != null) {
+            if (mListeners == null) {
+                mListeners = new ArrayList<>(4);
+            }
+            mListeners.add(listener);
+        }
+    }
+
+    public void removeOnSelectedChangeListener(OnSelectedChangeListener listener) {
+        if (listener != null && mListeners != null) {
+            mListeners.remove(listener);
+        }
     }
 
     public int[] getSelectedPositions() {
@@ -146,12 +160,14 @@ public class MultiWheelView extends LinearLayout {
     private class LastWheelViewSelectedListener implements WheelView.OnItemSelectedListener {
         @Override
         public void onItemSelected(int position) {
-            if (mListener != null) {
+            if (mListeners != null) {
                 int[] selectedPositions = new int[mCount];
                 for (int i = 0; i < mCount; ++i) {
                     selectedPositions[i] = mViews[i].getSelectedItemPosition();
                 }
-                mListener.onSelectedChanged(selectedPositions);
+                for (int i = 0, size = mListeners.size(); i < size; ++i) {
+                    mListeners.get(i).onSelectedChanged(selectedPositions);
+                }
             }
         }
     }

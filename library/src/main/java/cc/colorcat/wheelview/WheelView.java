@@ -60,7 +60,7 @@ public class WheelView extends FrameLayout {
     private int mPlaceholderCount; // 占位的 item 数量，实际 item 数量 = 用户设置的数据的数量 + 2 * mPlaceholderCount
     private int mItemHeight = Integer.MIN_VALUE;
     private int mSelectedPosition = WheelView.INVALID_POSITION; // 正中间的 item 的 position
-    private OnItemSelectedListener mListener;
+    private List<OnItemSelectedListener> mListeners;
     private ViewBinder mBinder;
 
     public WheelView(@NonNull Context context) {
@@ -119,50 +119,35 @@ public class WheelView extends FrameLayout {
         });
         SnapHelper helper = new LinearSnapHelper();
         helper.attachToRecyclerView(mRecyclerView);
-        addView(mRecyclerView);
+        super.addView(mRecyclerView);
 
         if (coverColor != Color.TRANSPARENT) {
             createCoverView(context);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                mCoverView.setBackground(buildCoverBackground(coverColor));
-            } else {
-                mCoverView.setBackgroundDrawable(buildCoverBackground(coverColor));
-            }
+            setBackground(mCoverView, buildCoverBackground(coverColor));
         }
     }
 
-    private Drawable buildCoverBackground(@ColorInt int coverColor) {
-        int red = Color.red(coverColor);
-        int green = Color.green(coverColor);
-        int blue = Color.blue(coverColor);
-        int alpha = Color.alpha(coverColor);
-
-        int quarter = Color.argb((int) (alpha * 0.75), red, green, blue);
-        int center = Color.argb((int) (alpha * 0.1), red, green, blue);
-        int[] colors = {coverColor, quarter, center, quarter, coverColor};
-        return new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors);
+    @Override
+    public void addView(View child, int index, ViewGroup.LayoutParams params) {
+        throw new UnsupportedOperationException();
     }
+
 
     public void setCoverBackground(Drawable drawable) {
         if (mCoverView == null) {
             createCoverView(getContext());
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            mCoverView.setBackground(drawable);
-        } else {
-            mCoverView.setBackgroundDrawable(drawable);
-        }
+        setBackground(mCoverView, drawable);
     }
 
     private void createCoverView(Context context) {
         mCoverView = new View(context);
         mCoverView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-        addView(mCoverView);
+        super.addView(mCoverView);
     }
 
     public void setItemData(List<?> data) {
         if (data == null) throw new IllegalArgumentException("data == null");
-
         mData.clear();
         pushPlaceholderData();
         mData.addAll(data);
@@ -184,8 +169,10 @@ public class WheelView extends FrameLayout {
     }
 
     private void notifyItemSelectedChanged() {
-        if (mListener != null) {
-            mListener.onItemSelected(mSelectedPosition);
+        if (mListeners != null) {
+            for (int i = 0, size = mListeners.size(); i < size; ++i) {
+                mListeners.get(i).onItemSelected(mSelectedPosition);
+            }
         }
     }
 
@@ -193,8 +180,19 @@ public class WheelView extends FrameLayout {
         mBinder = binder;
     }
 
-    public void setOnItemSelectedListener(OnItemSelectedListener listener) {
-        mListener = listener;
+    public void addOnItemSelectedListener(OnItemSelectedListener listener) {
+        if (listener != null) {
+            if (mListeners == null) {
+                mListeners = new ArrayList<>(4);
+            }
+            mListeners.add(listener);
+        }
+    }
+
+    public void removeOnItemSelectedListener(OnItemSelectedListener listener) {
+        if (listener != null && mListeners != null) {
+            mListeners.remove(listener);
+        }
     }
 
     public int getSelectedItemPosition() {
@@ -251,12 +249,25 @@ public class WheelView extends FrameLayout {
         }
     }
 
+
     private static void setBackground(View view, Drawable background) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             view.setBackground(background);
         } else {
             view.setBackgroundDrawable(background);
         }
+    }
+
+    private static Drawable buildCoverBackground(@ColorInt int coverColor) {
+        int red = Color.red(coverColor);
+        int green = Color.green(coverColor);
+        int blue = Color.blue(coverColor);
+        int alpha = Color.alpha(coverColor);
+
+        int quarter = Color.argb((int) (alpha * 0.75), red, green, blue);
+        int center = Color.argb((int) (alpha * 0.1), red, green, blue);
+        int[] colors = {coverColor, quarter, center, quarter, coverColor};
+        return new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors);
     }
 
 

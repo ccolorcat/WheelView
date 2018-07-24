@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   ~ Copyright 2018 cxx
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,7 @@
   ~ limitations under the License.
   -->
 
-<cc.colorcat.mvp.extension.widget.WheelView xmlns:android="http://schemas.android.com/apk/res/android"
+<cc.colorcat.wheelview.WheelView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/wv_multi_wheel_view"
     android:layout_width="0dp"
