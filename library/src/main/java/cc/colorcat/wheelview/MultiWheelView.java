@@ -67,7 +67,7 @@ public class MultiWheelView extends LinearLayout {
         super.setOrientation(LinearLayout.HORIZONTAL);
         TypedArray ta = context.obtainStyledAttributes(attrs, R.styleable.MultiWheelView);
         @LayoutRes
-        int layout = ta.getResourceId(R.styleable.MultiWheelView_wheelViewLayout, R.layout.widget_wheel_view);
+        int layout = ta.getResourceId(R.styleable.MultiWheelView_wheelViewLayout, R.layout.wheel_view_layout_multi_wheel_view);
         mCount = ta.getInteger(R.styleable.MultiWheelView_wheelViewCount, 1);
         ta.recycle();
 
@@ -84,10 +84,10 @@ public class MultiWheelView extends LinearLayout {
         }
     }
 
-    @Override
-    public void addView(View child, int index, ViewGroup.LayoutParams params) {
-        throw new UnsupportedOperationException();
-    }
+//    @Override
+//    public void addView(View child, int index, ViewGroup.LayoutParams params) {
+//        throw new UnsupportedOperationException();
+//    }
 
     public void addOnSelectedChangeListener(OnSelectedChangeListener listener) {
         if (listener != null) {

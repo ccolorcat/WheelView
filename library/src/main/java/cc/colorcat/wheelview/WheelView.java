@@ -127,10 +127,10 @@ public class WheelView extends FrameLayout {
         }
     }
 
-    @Override
-    public void addView(View child, int index, ViewGroup.LayoutParams params) {
-        throw new UnsupportedOperationException();
-    }
+//    @Override
+//    public void addView(View child, int index, ViewGroup.LayoutParams params) {
+//        throw new UnsupportedOperationException();
+//    }
 
 
     public void setCoverBackground(Drawable drawable) {
