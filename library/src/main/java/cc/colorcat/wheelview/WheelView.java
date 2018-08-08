@@ -47,7 +47,7 @@ import java.util.List;
  * xx.ch@outlook.com
  */
 public class WheelView extends FrameLayout {
-    public static final int INVALID_POSITION = -1;
+    public static final int INVALID_POSITION = RecyclerView.NO_POSITION;
 
     private View mCoverView;
     private RecyclerView mRecyclerView;
@@ -62,6 +62,7 @@ public class WheelView extends FrameLayout {
     private int mSelectedPosition = WheelView.INVALID_POSITION; // 正中间的 item 的 position
     private List<OnItemSelectedListener> mListeners;
     private ViewBinder mBinder;
+    private ItemViewHolderFactory mFactory;
 
     public WheelView(@NonNull Context context) {
         super(context);
@@ -103,8 +104,8 @@ public class WheelView extends FrameLayout {
         mRecyclerView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         mManager = new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false);
         mRecyclerView.setLayoutManager(mManager);
-        mAdapter = new WheelViewAdapter();
-        mRecyclerView.setAdapter(mAdapter);
+//        mAdapter = new WheelViewAdapter();
+//        mRecyclerView.setAdapter(mAdapter);
         mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
@@ -119,7 +120,7 @@ public class WheelView extends FrameLayout {
         });
         SnapHelper helper = new LinearSnapHelper();
         helper.attachToRecyclerView(mRecyclerView);
-        super.addView(mRecyclerView);
+        addChildView(mRecyclerView);
 
         if (coverColor != Color.TRANSPARENT) {
             createCoverView(context);
@@ -127,11 +128,21 @@ public class WheelView extends FrameLayout {
         }
     }
 
-//    @Override
-//    public void addView(View child, int index, ViewGroup.LayoutParams params) {
-//        throw new UnsupportedOperationException();
-//    }
+    private void addChildView(View child) {
+        ViewGroup.LayoutParams params = child.getLayoutParams();
+        if (params == null) {
+            params = generateDefaultLayoutParams();
+            if (params == null) {
+                throw new IllegalArgumentException("generateDefaultLayoutParams() cannot return null");
+            }
+        }
+        super.addView(child, -1, params);
+    }
 
+    @Override
+    public void addView(View child, int index, ViewGroup.LayoutParams params) {
+        throw new UnsupportedOperationException();
+    }
 
     public void setCoverBackground(Drawable drawable) {
         if (mCoverView == null) {
@@ -143,11 +154,17 @@ public class WheelView extends FrameLayout {
     private void createCoverView(Context context) {
         mCoverView = new View(context);
         mCoverView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-        super.addView(mCoverView);
+        addChildView(mCoverView);
     }
 
     public void setItemData(List<?> data) {
-        if (data == null) throw new IllegalArgumentException("data == null");
+        if (data == null) {
+            throw new IllegalArgumentException("data == null");
+        }
+        if (mAdapter == null) {
+            mAdapter = new WheelViewAdapter();
+            mRecyclerView.setAdapter(mAdapter);
+        }
         mData.clear();
         pushPlaceholderData();
         mData.addAll(data);
@@ -174,6 +191,10 @@ public class WheelView extends FrameLayout {
                 mListeners.get(i).onItemSelected(mSelectedPosition);
             }
         }
+    }
+
+    public void setItemViewHolderFactory(ItemViewHolderFactory factory) {
+        mFactory = factory;
     }
 
     public void setViewBinder(ViewBinder binder) {
@@ -204,28 +225,43 @@ public class WheelView extends FrameLayout {
         super.onLayout(changed, left, top, right, bottom);
         if (changed) {
             mItemHeight = (bottom - top) / mDisplayCount;
-            mAdapter.notifyDataSetChanged();
+            if (mAdapter != null) {
+                mAdapter.notifyDataSetChanged();
+            }
         }
     }
 
 
-    private class WheelViewAdapter extends RecyclerView.Adapter<ItemViewHolder> {
+    private class WheelViewAdapter extends RecyclerView.Adapter<WheelViewHolder> {
 
         @NonNull
         @Override
-        public ItemViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        public WheelViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View itemView = LayoutInflater.from(parent.getContext()).inflate(mItemLayout, parent, false);
-            return new ItemViewHolder(itemView);
+            ItemViewHolder itemHolder;
+            if (mFactory != null) {
+                itemHolder = mFactory.onCreateItemViewHolder(parent, mItemLayout);
+            } else {
+                itemHolder = new ItemViewHolder(itemView);
+            }
+            return new WheelViewHolder(itemHolder);
         }
 
         @Override
-        public void onBindViewHolder(@NonNull ItemViewHolder holder, int position) {
-            if (mBinder == null
-                    || position < mPlaceholderCount
-                    || position >= mData.size() - mPlaceholderCount
-                    || !mBinder.onBind(holder, position - mPlaceholderCount)) {
-                holder.textView.setText(String.valueOf(mData.get(position)));
+        public void onBindViewHolder(@NonNull WheelViewHolder holder, int position) {
+            final ItemViewHolder itemHolder = holder.itemHolder;
+            if (position < mPlaceholderCount || position >= mData.size() - mPlaceholderCount) {
+                // 当前为占位符，清除数据
+                itemHolder.textView.setText("");
+                if (mBinder != null) {
+                    mBinder.onClear(itemHolder);
+                }
+            } else if (mBinder == null || !mBinder.onBind(itemHolder, position - mPlaceholderCount)) {
+                // 当前非占位符，如果 mBinder 为空或 mBinder.onBind() 返回 false 则调用默认的数据绑定方式。
+                itemHolder.textView.setText(String.valueOf(mData.get(position)));
             }
+
+            // 判断当前 item 的高度与测定的高度是否一致，如果不一致则重新设置。
             ViewGroup.LayoutParams lp = holder.itemView.getLayoutParams();
             if (mItemHeight != Integer.MIN_VALUE && lp.height != mItemHeight) {
                 lp.height = mItemHeight;
@@ -239,14 +275,32 @@ public class WheelView extends FrameLayout {
         }
     }
 
+    private static class WheelViewHolder extends RecyclerView.ViewHolder {
+        private ItemViewHolder itemHolder;
 
-    public static class ItemViewHolder extends RecyclerView.ViewHolder {
+        private WheelViewHolder(ItemViewHolder holder) {
+            super(holder.itemView);
+            this.itemHolder = holder;
+        }
+    }
+
+    public static class ItemViewHolder {
+        public final View itemView;
         public final TextView textView;
 
-        private ItemViewHolder(View itemView) {
-            super(itemView);
-            textView = itemView.findViewById(android.R.id.text1);
+        public ItemViewHolder(View itemView) {
+            this.itemView = itemView;
+            this.textView = itemView.findViewById(android.R.id.text1);
         }
+    }
+
+
+    /**
+     * 设置自定义的 {@link ItemViewHolder}
+     */
+    public interface ItemViewHolderFactory {
+        @NonNull
+        ItemViewHolder onCreateItemViewHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout);
     }
 
 
@@ -276,10 +330,27 @@ public class WheelView extends FrameLayout {
     }
 
 
+    /**
+     * 提供手动设置数据的接口，便于实现更为复杂的样式。
+     */
     public interface ViewBinder {
         /**
-         * @return 如果手动处理数据绑定则返回 true，否则返回 false
+         * 默认的数据绑定仅设置文本，且文本是调用 {@link String#valueOf(Object)} 来转换的。
+         *
+         * @return 如果不希望使用默认的数据绑定返回 {@code true}，否则返回 {@code false}.
          */
         boolean onBind(ItemViewHolder holder, int position);
+
+        /**
+         * 清除占位符中的数据
+         */
+        void onClear(ItemViewHolder holder);
+    }
+
+
+    public static abstract class SimpleViewBinder implements ViewBinder {
+        @Override
+        public void onClear(ItemViewHolder holder) {
+        }
     }
 }

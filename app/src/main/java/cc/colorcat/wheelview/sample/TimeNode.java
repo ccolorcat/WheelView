@@ -16,14 +16,37 @@
 
 package cc.colorcat.wheelview.sample;
 
+import java.util.Collections;
+import java.util.List;
+
+import cc.colorcat.wheelview.MultiWheelView;
+
 /**
  * Author: cxx
- * Date: 2018-08-07
+ * Date: 2018-08-08
  * GitHub: https://github.com/ccolorcat
  */
-class Day extends TimeNode {
+class TimeNode implements MultiWheelView.Node {
+    protected final int value;
 
-    Day(int value) {
-        super(value);
+    TimeNode(int value) {
+        this.value = value;
+    }
+
+    @Override
+    public String contentToString() {
+        return Integer.toString(value);
+    }
+
+    @Override
+    public List<? extends MultiWheelView.Node> children() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + '{' +
+                "value=" + value +
+                '}';
     }
 }

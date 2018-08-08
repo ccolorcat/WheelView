@@ -26,24 +26,20 @@ import cc.colorcat.wheelview.MultiWheelView;
  * Date: 2018-08-07
  * GitHub: https://github.com/ccolorcat
  */
-public class Year implements MultiWheelView.Node {
-    final int year;
-    final List<Month> months = new ArrayList<>();
+class Year extends TimeNode {
+    private final List<Month> months = new ArrayList<>(12);
 
-    public Year(int year) {
-        this.year = year;
-        for (int i = 1; i <= 12; i++) {
-            months.add(new Month(year, i));
-        }
-    }
-
-    @Override
-    public String contentToString() {
-        return Integer.toString(year);
+    Year(int value) {
+        super(value);
     }
 
     @Override
     public List<? extends MultiWheelView.Node> children() {
+        if (months.isEmpty()) {
+            for (int i = 1; i <= 12; ++i) {
+                months.add(new Month(i, this));
+            }
+        }
         return months;
     }
 }

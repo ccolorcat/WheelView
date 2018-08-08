@@ -40,6 +40,7 @@ public class MultiWheelView extends LinearLayout {
     private int mCount;
     private WheelView[] mViews;
     private Object[] mData;
+    private WheelView.ViewBinder[] mBinders;
     private List<OnSelectedChangeListener> mListeners;
 
     public MultiWheelView(Context context) {
@@ -78,16 +79,43 @@ public class MultiWheelView extends LinearLayout {
             WheelView view = (WheelView) inflater.inflate(layout, this, false);
             view.addOnItemSelectedListener(i != mCount - 1 ? new WheelViewSelectedListener(i) : new LastWheelViewSelectedListener());
             view.setViewBinder(new MultiViewBinder(i));
-            super.addView(view);
+            addChildView(view);
             mViews[i] = view;
             mData[i] = new ArrayList<Node>();
         }
     }
 
-//    @Override
-//    public void addView(View child, int index, ViewGroup.LayoutParams params) {
-//        throw new UnsupportedOperationException();
-//    }
+    private void addChildView(View child) {
+        ViewGroup.LayoutParams params = child.getLayoutParams();
+        if (params == null) {
+            params = generateDefaultLayoutParams();
+            if (params == null) {
+                throw new IllegalArgumentException("generateDefaultLayoutParams() cannot return null");
+            }
+        }
+        super.addView(child, -1, params);
+    }
+
+    @Override
+    public void addView(View child, int index, ViewGroup.LayoutParams params) {
+        throw new UnsupportedOperationException();
+    }
+
+    public void setItemViewHolderFactories(WheelView.ItemViewHolderFactory... factories) {
+        if (factories.length != mCount) {
+            throw new IllegalArgumentException("factories.length != wheelViewCount");
+        }
+        for (int i = 0, size = mViews.length; i < size; ++i) {
+            mViews[i].setItemViewHolderFactory(factories[i]);
+        }
+    }
+
+    public void setViewBinders(WheelView.ViewBinder... binders) {
+        if (binders.length != mCount) {
+            throw new IllegalArgumentException("binders.length != wheelViewCount");
+        }
+        mBinders = binders;
+    }
 
     public void addOnSelectedChangeListener(OnSelectedChangeListener listener) {
         if (listener != null) {
@@ -125,7 +153,7 @@ public class MultiWheelView extends LinearLayout {
     }
 
 
-    private class MultiViewBinder implements WheelView.ViewBinder {
+    private class MultiViewBinder extends WheelView.SimpleViewBinder {
         private final int mIndex;
 
         private MultiViewBinder(int index) {
@@ -134,7 +162,9 @@ public class MultiWheelView extends LinearLayout {
 
         @Override
         public boolean onBind(WheelView.ItemViewHolder holder, int position) {
-            holder.textView.setText(getData(mIndex).get(position).contentToString());
+            if (mBinders == null || mBinders[mIndex] == null || !mBinders[mIndex].onBind(holder, position)) {
+                holder.textView.setText(getData(mIndex).get(position).contentToString());
+            }
             return true;
         }
     }
