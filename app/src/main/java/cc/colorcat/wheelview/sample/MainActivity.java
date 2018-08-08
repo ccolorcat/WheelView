@@ -1,6 +1,7 @@
 package cc.colorcat.wheelview.sample;
 
 import android.annotation.SuppressLint;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.support.annotation.LayoutRes;
 import android.support.annotation.NonNull;
@@ -33,7 +34,6 @@ public class MainActivity extends AppCompatActivity {
         final TextView content = findViewById(R.id.tv_content);
 
         MultiWheelView wheelView = findViewById(R.id.mwv_calendar);
-        wheelView.setData(mYears);
         wheelView.addOnSelectedChangeListener(new MultiWheelView.OnSelectedChangeListener() {
             @SuppressLint("DefaultLocale")
             @Override
@@ -45,6 +45,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         wheelView.setItemViewHolderFactories(new Factory1(), new Factory2(), new Factory3());
+        wheelView.setMultiViewBinders(new MultiViewBinder1(), new MultiViewBinder2(), new MultiViewBinder3());
+        wheelView.setData(mYears);
     }
 
 
@@ -54,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public WheelView.ItemViewHolder onCreateItemViewHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout) {
             View itemView = LayoutInflater.from(parent.getContext()).inflate(android.R.layout.simple_list_item_1, parent, false);
+            itemView.setBackgroundColor(Color.RED);
             return new WheelView.ItemViewHolder(itemView);
         }
     }
@@ -63,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public WheelView.ItemViewHolder onCreateItemViewHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout) {
             View itemView = LayoutInflater.from(parent.getContext()).inflate(android.R.layout.simple_list_item_1, parent, false);
+            itemView.setBackgroundColor(Color.GREEN);
             return new WheelView.ItemViewHolder(itemView);
         }
     }
@@ -73,7 +77,38 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public WheelView.ItemViewHolder onCreateItemViewHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout) {
             View itemView = LayoutInflater.from(parent.getContext()).inflate(android.R.layout.simple_list_item_1, parent, false);
+            itemView.setBackgroundColor(Color.BLUE);
             return new WheelView.ItemViewHolder(itemView);
+        }
+    }
+
+    private static class MultiViewBinder1 extends MultiWheelView.SimpleMultiViewBinder {
+        @SuppressLint("DefaultLocale")
+        @Override
+        public boolean onBind(WheelView.ItemViewHolder holder, MultiWheelView.Node node) {
+            Year year = (Year) node;
+            holder.textView.setText(String.format("%d 年", year.value));
+            return true;
+        }
+    }
+
+    private static class MultiViewBinder2 extends MultiWheelView.SimpleMultiViewBinder {
+        @SuppressLint("DefaultLocale")
+        @Override
+        public boolean onBind(WheelView.ItemViewHolder holder, MultiWheelView.Node node) {
+            Month month = (Month) node;
+            holder.textView.setText(String.format("%d 月", month.value));
+            return true;
+        }
+    }
+
+    private static class MultiViewBinder3 extends MultiWheelView.SimpleMultiViewBinder {
+        @SuppressLint("DefaultLocale")
+        @Override
+        public boolean onBind(WheelView.ItemViewHolder holder, MultiWheelView.Node node) {
+            Day day = (Day) node;
+            holder.textView.setText(String.format("%d 日", day.value));
+            return true;
         }
     }
 }

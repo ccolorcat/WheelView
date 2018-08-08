@@ -40,7 +40,7 @@ public class MultiWheelView extends LinearLayout {
     private int mCount;
     private WheelView[] mViews;
     private Object[] mData;
-    private WheelView.ViewBinder[] mBinders;
+    private MultiViewBinder[] mBinders;
     private List<OnSelectedChangeListener> mListeners;
 
     public MultiWheelView(Context context) {
@@ -77,11 +77,11 @@ public class MultiWheelView extends LinearLayout {
         mViews = new WheelView[mCount];
         for (int i = 0; i < mCount; ++i) {
             WheelView view = (WheelView) inflater.inflate(layout, this, false);
-            view.addOnItemSelectedListener(i != mCount - 1 ? new WheelViewSelectedListener(i) : new LastWheelViewSelectedListener());
-            view.setViewBinder(new MultiViewBinder(i));
-            addChildView(view);
             mViews[i] = view;
             mData[i] = new ArrayList<Node>();
+            view.addOnItemSelectedListener(i != mCount - 1 ? new WheelViewSelectedListener(i) : new LastWheelViewSelectedListener());
+            view.setViewBinder(new InnerMultiViewBinder(i));
+            addChildView(view);
         }
     }
 
@@ -110,7 +110,7 @@ public class MultiWheelView extends LinearLayout {
         }
     }
 
-    public void setViewBinders(WheelView.ViewBinder... binders) {
+    public void setMultiViewBinders(MultiViewBinder... binders) {
         if (binders.length != mCount) {
             throw new IllegalArgumentException("binders.length != wheelViewCount");
         }
@@ -153,19 +153,27 @@ public class MultiWheelView extends LinearLayout {
     }
 
 
-    private class MultiViewBinder extends WheelView.SimpleViewBinder {
+    private class InnerMultiViewBinder implements WheelView.ViewBinder {
         private final int mIndex;
 
-        private MultiViewBinder(int index) {
+        private InnerMultiViewBinder(int index) {
             mIndex = index;
         }
 
         @Override
         public boolean onBind(WheelView.ItemViewHolder holder, int position) {
-            if (mBinders == null || mBinders[mIndex] == null || !mBinders[mIndex].onBind(holder, position)) {
-                holder.textView.setText(getData(mIndex).get(position).contentToString());
+            Node node = getData(mIndex).get(position);
+            if (mBinders == null || mBinders[mIndex] == null || !mBinders[mIndex].onBind(holder, node)) {
+                holder.textView.setText(node.contentToString());
             }
             return true;
+        }
+
+        @Override
+        public void onClear(WheelView.ItemViewHolder holder) {
+            if (mBinders != null && mBinders[mIndex] != null) {
+                mBinders[mIndex].onClear(holder);
+            }
         }
     }
 
@@ -199,6 +207,27 @@ public class MultiWheelView extends LinearLayout {
                     mListeners.get(i).onSelectedChanged(selectedPositions);
                 }
             }
+        }
+    }
+
+
+    public interface MultiViewBinder {
+        /**
+         * 默认的数据绑定仅设置文本，且文本是调用 {@link Node#contentToString()}。
+         *
+         * @return 如果不希望使用默认的数据绑定返回 {@code true}，否则返回 {@code false}.
+         */
+        boolean onBind(WheelView.ItemViewHolder holder, Node node);
+
+        /**
+         * 清除占位符中的数据
+         */
+        void onClear(WheelView.ItemViewHolder holder);
+    }
+
+    public static abstract class SimpleMultiViewBinder implements MultiViewBinder {
+        @Override
+        public void onClear(WheelView.ItemViewHolder holder) {
         }
     }
 
