@@ -32,6 +32,7 @@ import android.support.v7.widget.LinearSnapHelper;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SnapHelper;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -47,6 +48,8 @@ import java.util.List;
  * xx.ch@outlook.com
  */
 public class WheelView extends FrameLayout {
+    public static final String TAG = WheelView.class.getSimpleName();
+
     public static final int INVALID_POSITION = RecyclerView.NO_POSITION;
 
     private View mCoverView;
@@ -61,8 +64,6 @@ public class WheelView extends FrameLayout {
     private int mItemHeight = Integer.MIN_VALUE;
     private int mSelectedPosition = WheelView.INVALID_POSITION; // 正中间的 item 的 position
     private List<OnItemSelectedListener> mListeners;
-    private ViewBinder mBinder;
-    private ItemViewHolderFactory mFactory;
 
     public WheelView(@NonNull Context context) {
         super(context);
@@ -88,6 +89,13 @@ public class WheelView extends FrameLayout {
     private void init(Context context, AttributeSet attrs) {
         TypedArray ta = context.obtainStyledAttributes(attrs, R.styleable.WheelView);
         mDisplayCount = ta.getInteger(R.styleable.WheelView_displayCount, 3);
+        mItemLayout = ta.getResourceId(R.styleable.WheelView_itemLayout, android.R.layout.simple_list_item_1);
+        int coverColor = ta.getColor(R.styleable.WheelView_coverColor, Color.TRANSPARENT);
+        ta.recycle();
+
+        if (mDisplayCount < 1) {
+            throw new IllegalArgumentException("displayCount must be greater than 0");
+        }
         if ((mDisplayCount & 1) == 0) {
             if (mDisplayCount > 5) {
                 --mDisplayCount;
@@ -96,16 +104,11 @@ public class WheelView extends FrameLayout {
             }
         }
         mPlaceholderCount = mDisplayCount >> 1;
-        mItemLayout = ta.getResourceId(R.styleable.WheelView_itemLayout, android.R.layout.simple_list_item_1);
-        int coverColor = ta.getColor(R.styleable.WheelView_coverColor, Color.TRANSPARENT);
-        ta.recycle();
 
         mRecyclerView = new RecyclerView(context);
         mRecyclerView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         mManager = new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false);
         mRecyclerView.setLayoutManager(mManager);
-//        mAdapter = new WheelViewAdapter();
-//        mRecyclerView.setAdapter(mAdapter);
         mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
@@ -123,7 +126,7 @@ public class WheelView extends FrameLayout {
         addChildView(mRecyclerView);
 
         if (coverColor != Color.TRANSPARENT) {
-            createCoverView(context);
+            addCoverView(context);
             setBackground(mCoverView, buildCoverBackground(coverColor));
         }
     }
@@ -146,24 +149,31 @@ public class WheelView extends FrameLayout {
 
     public void setCoverBackground(Drawable drawable) {
         if (mCoverView == null) {
-            createCoverView(getContext());
+            addCoverView(getContext());
         }
         setBackground(mCoverView, drawable);
     }
 
-    private void createCoverView(Context context) {
+    private void addCoverView(Context context) {
         mCoverView = new View(context);
         mCoverView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         addChildView(mCoverView);
     }
 
-    public void setItemData(List<?> data) {
+    public <VH extends ItemHolder> void setItemAdapter(ItemAdapter<VH> adapter) {
+        if (adapter == null) {
+            throw new NullPointerException("adapter == null");
+        }
+        setRecyclerViewAdapter(adapter);
+        mAdapter.notifyDataSetChanged();
+    }
+
+    public void updateItemData(List<?> data) {
         if (data == null) {
             throw new IllegalArgumentException("data == null");
         }
         if (mAdapter == null) {
-            mAdapter = new WheelViewAdapter();
-            mRecyclerView.setAdapter(mAdapter);
+            setRecyclerViewAdapter(new SimpleItemAdapter());
         }
         mData.clear();
         pushPlaceholderData();
@@ -179,6 +189,11 @@ public class WheelView extends FrameLayout {
         notifyItemSelectedChanged();
     }
 
+    private <VH extends ItemHolder> void setRecyclerViewAdapter(ItemAdapter<VH> adapter) {
+        mAdapter = new WheelViewAdapter<>(adapter);
+        mRecyclerView.setAdapter(mAdapter);
+    }
+
     private void pushPlaceholderData() {
         for (int i = 0; i < mPlaceholderCount; ++i) {
             mData.add("");
@@ -191,14 +206,6 @@ public class WheelView extends FrameLayout {
                 mListeners.get(i).onItemSelected(mSelectedPosition);
             }
         }
-    }
-
-    public void setItemViewHolderFactory(ItemViewHolderFactory factory) {
-        mFactory = factory;
-    }
-
-    public void setViewBinder(ViewBinder binder) {
-        mBinder = binder;
     }
 
     public void addOnItemSelectedListener(OnItemSelectedListener listener) {
@@ -232,33 +239,32 @@ public class WheelView extends FrameLayout {
     }
 
 
-    private class WheelViewAdapter extends RecyclerView.Adapter<WheelViewHolder> {
+    private class WheelViewAdapter<VH extends ItemHolder> extends RecyclerView.Adapter<WheelViewHolder<VH>> {
+        private final ItemAdapter<VH> mItemAdapter;
+
+        private WheelViewAdapter(ItemAdapter<VH> itemAdapter) {
+            mItemAdapter = itemAdapter;
+        }
 
         @NonNull
         @Override
-        public WheelViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View itemView = LayoutInflater.from(parent.getContext()).inflate(mItemLayout, parent, false);
-            ItemViewHolder itemHolder;
-            if (mFactory != null) {
-                itemHolder = mFactory.onCreateItemViewHolder(parent, mItemLayout);
-            } else {
-                itemHolder = new ItemViewHolder(itemView);
-            }
-            return new WheelViewHolder(itemHolder);
+        public WheelViewHolder<VH> onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            Log.d(TAG, "onCreateWheelViewHolder");
+            VH itemHolder = mItemAdapter.onCreateItemHolder(parent, mItemLayout);
+            return new WheelViewHolder<>(itemHolder);
         }
 
         @Override
-        public void onBindViewHolder(@NonNull WheelViewHolder holder, int position) {
-            final ItemViewHolder itemHolder = holder.itemHolder;
+        public void onBindViewHolder(@NonNull WheelViewHolder<VH> holder, int position) {
+            final VH itemHolder = holder.itemHolder;
             if (position < mPlaceholderCount || position >= mData.size() - mPlaceholderCount) {
                 // 当前为占位符，清除数据
-                itemHolder.textView.setText("");
-                if (mBinder != null) {
-                    mBinder.onClear(itemHolder);
+                if (itemHolder.textView != null) {
+                    itemHolder.textView.setText("");
                 }
-            } else if (mBinder == null || !mBinder.onBind(itemHolder, position - mPlaceholderCount)) {
-                // 当前非占位符，如果 mBinder 为空或 mBinder.onBind() 返回 false 则调用默认的数据绑定方式。
-                itemHolder.textView.setText(String.valueOf(mData.get(position)));
+                mItemAdapter.onClearItemHolder(itemHolder);
+            } else {
+                mItemAdapter.onBindItemHolder(itemHolder, position - mPlaceholderCount);
             }
 
             // 判断当前 item 的高度与测定的高度是否一致，如果不一致则重新设置。
@@ -275,32 +281,64 @@ public class WheelView extends FrameLayout {
         }
     }
 
-    private static class WheelViewHolder extends RecyclerView.ViewHolder {
-        private ItemViewHolder itemHolder;
 
-        private WheelViewHolder(ItemViewHolder holder) {
+    private static class WheelViewHolder<VH extends ItemHolder> extends RecyclerView.ViewHolder {
+        private VH itemHolder;
+
+        private WheelViewHolder(VH holder) {
             super(holder.itemView);
             this.itemHolder = holder;
         }
     }
 
-    public static class ItemViewHolder {
+
+    public static class ItemHolder {
         public final View itemView;
         public final TextView textView;
 
-        public ItemViewHolder(View itemView) {
+        public ItemHolder(View itemView) {
             this.itemView = itemView;
             this.textView = itemView.findViewById(android.R.id.text1);
         }
     }
 
 
-    /**
-     * 设置自定义的 {@link ItemViewHolder}
-     */
-    public interface ItemViewHolderFactory {
+    public static abstract class ItemAdapter<VH extends ItemHolder> {
+        /**
+         * @param itemLayout xml 布局中的 itemLayout, 如未指定则为 android.R.layout.simple_list_item_1
+         */
         @NonNull
-        ItemViewHolder onCreateItemViewHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout);
+        public abstract VH onCreateItemHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout);
+
+        /**
+         * 默认的数据绑定仅设置文本，且文本是调用 {@link String#valueOf(Object)} 来转换的。
+         */
+        public abstract void onBindItemHolder(@NonNull VH holder, int position);
+
+        /**
+         * 清除占位符中的数据
+         */
+        public void onClearItemHolder(@NonNull VH holder) {
+        }
+    }
+
+    private class SimpleItemAdapter extends ItemAdapter<ItemHolder> {
+        @NonNull
+        @Override
+        public ItemHolder onCreateItemHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout) {
+            View itemView = LayoutInflater.from(parent.getContext()).inflate(itemLayout, parent, false);
+            return new ItemHolder(itemView);
+        }
+
+        @Override
+        public void onBindItemHolder(@NonNull ItemHolder holder, int position) {
+            holder.textView.setText(String.valueOf(mData.get(position + mPlaceholderCount)));
+        }
+    }
+
+
+    public interface OnItemSelectedListener {
+        void onItemSelected(int position);
     }
 
 
@@ -322,35 +360,5 @@ public class WheelView extends FrameLayout {
         int center = Color.argb((int) (alpha * 0.1), red, green, blue);
         int[] colors = {coverColor, quarter, center, quarter, coverColor};
         return new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors);
-    }
-
-
-    public interface OnItemSelectedListener {
-        void onItemSelected(int position);
-    }
-
-
-    /**
-     * 提供手动设置数据的接口，便于实现更为复杂的样式。
-     */
-    public interface ViewBinder {
-        /**
-         * 默认的数据绑定仅设置文本，且文本是调用 {@link String#valueOf(Object)} 来转换的。
-         *
-         * @return 如果不希望使用默认的数据绑定返回 {@code true}，否则返回 {@code false}.
-         */
-        boolean onBind(ItemViewHolder holder, int position);
-
-        /**
-         * 清除占位符中的数据
-         */
-        void onClear(ItemViewHolder holder);
-    }
-
-
-    public static abstract class SimpleViewBinder implements ViewBinder {
-        @Override
-        public void onClear(ItemViewHolder holder) {
-        }
     }
 }

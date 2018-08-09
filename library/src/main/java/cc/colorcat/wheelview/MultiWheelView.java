@@ -20,6 +20,7 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.os.Build;
 import android.support.annotation.LayoutRes;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.util.AttributeSet;
@@ -40,7 +41,6 @@ public class MultiWheelView extends LinearLayout {
     private int mCount;
     private WheelView[] mViews;
     private Object[] mData;
-    private MultiViewBinder[] mBinders;
     private List<OnSelectedChangeListener> mListeners;
 
     public MultiWheelView(Context context) {
@@ -72,6 +72,10 @@ public class MultiWheelView extends LinearLayout {
         mCount = ta.getInteger(R.styleable.MultiWheelView_wheelViewCount, 1);
         ta.recycle();
 
+        if (mCount < 1) {
+            throw new IllegalArgumentException("wheelViewCount must be greater than 0");
+        }
+
         LayoutInflater inflater = LayoutInflater.from(context);
         mData = new Object[mCount];
         mViews = new WheelView[mCount];
@@ -80,7 +84,7 @@ public class MultiWheelView extends LinearLayout {
             mViews[i] = view;
             mData[i] = new ArrayList<Node>();
             view.addOnItemSelectedListener(i != mCount - 1 ? new WheelViewSelectedListener(i) : new LastWheelViewSelectedListener());
-            view.setViewBinder(new InnerMultiViewBinder(i));
+            view.setItemAdapter(new InnerItemAdapter<>(i, new SimpleMultiItemAdapter()));
             addChildView(view);
         }
     }
@@ -101,20 +105,18 @@ public class MultiWheelView extends LinearLayout {
         throw new UnsupportedOperationException();
     }
 
-    public void setItemViewHolderFactories(WheelView.ItemViewHolderFactory... factories) {
-        if (factories.length != mCount) {
-            throw new IllegalArgumentException("factories.length != wheelViewCount");
-        }
-        for (int i = 0, size = mViews.length; i < size; ++i) {
-            mViews[i].setItemViewHolderFactory(factories[i]);
-        }
+    public int getWheelViewCount() {
+        return mCount;
     }
 
-    public void setMultiViewBinders(MultiViewBinder... binders) {
-        if (binders.length != mCount) {
-            throw new IllegalArgumentException("binders.length != wheelViewCount");
+    public <VH extends WheelView.ItemHolder> void setMultiItemAdapter(int index, MultiItemAdapter<VH> adapter) {
+        if (adapter == null) {
+            throw new NullPointerException("adapter == null");
         }
-        mBinders = binders;
+        if (index < 0 || index >= mCount) {
+            throw new IndexOutOfBoundsException(String.format("index[0, %d) = %d", mCount, index));
+        }
+        mViews[index].setItemAdapter(new InnerItemAdapter<>(index, adapter));
     }
 
     public void addOnSelectedChangeListener(OnSelectedChangeListener listener) {
@@ -140,11 +142,11 @@ public class MultiWheelView extends LinearLayout {
         return result;
     }
 
-    public void setData(List<? extends Node> data) {
+    public void updateData(List<? extends Node> data) {
         List<Node> first = getData(0);
         first.clear();
         first.addAll(data);
-        mViews[0].setItemData(first);
+        mViews[0].updateItemData(first);
     }
 
     @SuppressWarnings("unchecked")
@@ -153,27 +155,29 @@ public class MultiWheelView extends LinearLayout {
     }
 
 
-    private class InnerMultiViewBinder implements WheelView.ViewBinder {
+    private class InnerItemAdapter<VH extends WheelView.ItemHolder> extends WheelView.ItemAdapter<VH> {
         private final int mIndex;
+        private final MultiItemAdapter<VH> mItemAdapter;
 
-        private InnerMultiViewBinder(int index) {
+        private InnerItemAdapter(int index, MultiItemAdapter<VH> itemAdapter) {
             mIndex = index;
+            mItemAdapter = itemAdapter;
+        }
+
+        @NonNull
+        @Override
+        public VH onCreateItemHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout) {
+            return mItemAdapter.onCreateItemHolder(parent, itemLayout);
         }
 
         @Override
-        public boolean onBind(WheelView.ItemViewHolder holder, int position) {
-            Node node = getData(mIndex).get(position);
-            if (mBinders == null || mBinders[mIndex] == null || !mBinders[mIndex].onBind(holder, node)) {
-                holder.textView.setText(node.contentToString());
-            }
-            return true;
+        public void onBindItemHolder(@NonNull VH holder, int position) {
+            mItemAdapter.onBindItemHolder(holder, getData(mIndex).get(position));
         }
 
         @Override
-        public void onClear(WheelView.ItemViewHolder holder) {
-            if (mBinders != null && mBinders[mIndex] != null) {
-                mBinders[mIndex].onClear(holder);
-            }
+        public void onClearItemHolder(@NonNull VH holder) {
+            mItemAdapter.onClearItemHolder(holder);
         }
     }
 
@@ -190,7 +194,7 @@ public class MultiWheelView extends LinearLayout {
             List<Node> next = getData(mIndex + 1);
             next.clear();
             next.addAll(position != WheelView.INVALID_POSITION ? getData(mIndex).get(position).children() : Collections.<Node>emptyList());
-            mViews[mIndex + 1].setItemData(next);
+            mViews[mIndex + 1].updateItemData(next);
         }
     }
 
@@ -211,28 +215,44 @@ public class MultiWheelView extends LinearLayout {
     }
 
 
-    public interface MultiViewBinder {
+    public static abstract class MultiItemAdapter<VH extends WheelView.ItemHolder> {
         /**
-         * 默认的数据绑定仅设置文本，且文本是调用 {@link Node#contentToString()}。
-         *
-         * @return 如果不希望使用默认的数据绑定返回 {@code true}，否则返回 {@code false}.
+         * @param itemLayout xml 布局中的 itemLayout, 如未指定则为 android.R.layout.simple_list_item_1
          */
-        boolean onBind(WheelView.ItemViewHolder holder, Node node);
+        @NonNull
+        public abstract VH onCreateItemHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout);
+
+        /**
+         * 默认的数据绑定仅设置文本，且文本是调用 {@link String#valueOf(Object)} 来转换的。
+         */
+        public abstract void onBindItemHolder(@NonNull VH holder, Node data);
 
         /**
          * 清除占位符中的数据
          */
-        void onClear(WheelView.ItemViewHolder holder);
+        public void onClearItemHolder(@NonNull VH holder) {
+        }
     }
 
-    public static abstract class SimpleMultiViewBinder implements MultiViewBinder {
+    private static class SimpleMultiItemAdapter extends MultiItemAdapter<WheelView.ItemHolder> {
+        @NonNull
         @Override
-        public void onClear(WheelView.ItemViewHolder holder) {
+        public WheelView.ItemHolder onCreateItemHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout) {
+            View itemView = LayoutInflater.from(parent.getContext()).inflate(itemLayout, parent, false);
+            return new WheelView.ItemHolder(itemView);
+        }
+
+        @Override
+        public void onBindItemHolder(@NonNull WheelView.ItemHolder holder, Node data) {
+            holder.textView.setText(data.contentToString());
         }
     }
 
 
     public interface OnSelectedChangeListener {
+        /**
+         * @param positions 长度等于 xml 布局中 wheelViewCount，且顺次对应。
+         */
         void onSelectedChanged(int... positions);
     }
 
@@ -240,6 +260,7 @@ public class MultiWheelView extends LinearLayout {
     public interface Node {
         String contentToString();
 
+        @NonNull
         List<? extends Node> children();
     }
 }

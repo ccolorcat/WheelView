@@ -16,7 +16,7 @@
     <cc.colorcat.wheelview.MultiWheelView
         android:id="@+id/mwv_calendar"
         android:layout_width="match_parent"
-        android:layout_height="160dp"
+        android:layout_height="320dp"
         android:layout_marginTop="32dp"
         app:wheelViewCount="3" />
 

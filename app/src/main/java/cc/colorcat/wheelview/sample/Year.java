@@ -16,6 +16,8 @@
 
 package cc.colorcat.wheelview.sample;
 
+import android.support.annotation.NonNull;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,6 +35,7 @@ class Year extends TimeNode {
         super(value);
     }
 
+    @NonNull
     @Override
     public List<? extends MultiWheelView.Node> children() {
         if (months.isEmpty()) {

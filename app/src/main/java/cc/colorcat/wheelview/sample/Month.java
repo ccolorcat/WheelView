@@ -16,6 +16,7 @@
 
 package cc.colorcat.wheelview.sample;
 
+import android.support.annotation.NonNull;
 import android.util.SparseArray;
 
 import java.util.ArrayList;
@@ -58,6 +59,7 @@ class Month extends TimeNode {
     }
 
 
+    @NonNull
     @Override
     public List<? extends MultiWheelView.Node> children() {
         if (days == null) {

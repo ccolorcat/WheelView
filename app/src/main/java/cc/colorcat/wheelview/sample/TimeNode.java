@@ -16,6 +16,8 @@
 
 package cc.colorcat.wheelview.sample;
 
+import android.support.annotation.NonNull;
+
 import java.util.Collections;
 import java.util.List;
 
@@ -38,6 +40,7 @@ class TimeNode implements MultiWheelView.Node {
         return Integer.toString(value);
     }
 
+    @NonNull
     @Override
     public List<? extends MultiWheelView.Node> children() {
         return Collections.emptyList();
