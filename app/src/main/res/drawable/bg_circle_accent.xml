@@ -14,11 +14,7 @@
   ~ limitations under the License.
   -->
 
-<menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
-    <item
-        android:id="@+id/refresh"
-        android:icon="@drawable/ic_refresh_accent_24dp"
-        android:title="@string/refresh"
-        app:showAsAction="always" />
-</menu>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/colorAccent" />
+</shape>

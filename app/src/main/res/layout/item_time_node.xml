@@ -14,11 +14,21 @@
   ~ limitations under the License.
   -->
 
-<menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
-    <item
-        android:id="@+id/refresh"
-        android:icon="@drawable/ic_refresh_accent_24dp"
-        android:title="@string/refresh"
-        app:showAsAction="always" />
-</menu>
+
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="4dp"
+    android:paddingEnd="16dp"
+    android:paddingStart="16dp"
+    android:paddingTop="4dp">
+
+    <TextView
+        android:id="@android:id/text1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_round_rectangle_accent"
+        android:gravity="center"
+        android:textColor="#FFFFFF" />
+</FrameLayout>
+

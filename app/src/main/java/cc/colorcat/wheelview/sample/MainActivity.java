@@ -4,13 +4,11 @@ import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -48,9 +46,9 @@ public class MainActivity extends AppCompatActivity {
                 content.setText(String.format("%d 年 %d 月 %d 日", year.value, month.value, day.value));
             }
         });
-//        wheelView.setMultiItemAdapter(0, new IconAdapter());
-//        wheelView.setMultiItemAdapter(1, new TwoLineAdapter());
-//        wheelView.setMultiItemAdapter(2, new SingleLineAdapter());
+        wheelView.setMultiItemAdapter(0, new YearAdapter());
+        wheelView.setMultiItemAdapter(1, new MonthAdapter());
+        wheelView.setMultiItemAdapter(2, new DayAdapter());
         wheelView.updateData(mYears);
     }
 
@@ -63,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.fill_data:
+            case R.id.refresh:
                 wheelView.updateData(mYears);
                 break;
             default:
@@ -73,91 +71,69 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private static class IconAdapter extends MultiWheelView.MultiItemAdapter<IconItemHolder> {
+    private static class YearAdapter extends MultiWheelView.MultiItemAdapter<WheelView.ItemHolder> {
         @NonNull
         @Override
-        public IconItemHolder onCreateItemHolder(@NonNull ViewGroup parent, int itemLayout) {
-            View itemView = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_icon_item, parent, false);
-            return new IconItemHolder(itemView);
+        public WheelView.ItemHolder onCreateItemHolder(@NonNull ViewGroup parent, int itemLayout) {
+            View itemView = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_time_node, parent, false);
+            return new WheelView.ItemHolder(itemView);
         }
 
         @Override
-        public void onBindItemHolder(@NonNull IconItemHolder holder, MultiWheelView.Node data) {
+        public void onBindItemHolder(@NonNull WheelView.ItemHolder holder, MultiWheelView.Node data) {
             holder.textView.setText(String.format("%s 年", data.contentToString()));
-            holder.icon.setImageResource(R.mipmap.ic_launcher_round);
-        }
-
-        @Override
-        public void onClearItemHolder(@NonNull IconItemHolder holder) {
-            holder.icon.setImageDrawable(null);
+            holder.textView.setSelected(isLeapYear(((Year) data).value));
         }
     }
 
-    private static class TwoLineAdapter extends MultiWheelView.MultiItemAdapter<TwoLineItemHolder> {
+    private static class MonthAdapter extends MultiWheelView.MultiItemAdapter<WheelView.ItemHolder> {
 
         @NonNull
         @Override
-        public TwoLineItemHolder onCreateItemHolder(@NonNull ViewGroup parent, int itemLayout) {
-            View itemView = LayoutInflater.from(parent.getContext()).inflate(android.R.layout.simple_list_item_2, parent, false);
-            return new TwoLineItemHolder(itemView);
+        public WheelView.ItemHolder onCreateItemHolder(@NonNull ViewGroup parent, int itemLayout) {
+            View itemView = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_time_node, parent, false);
+            return new WheelView.ItemHolder(itemView);
         }
 
         @Override
-        public void onBindItemHolder(@NonNull TwoLineItemHolder holder, MultiWheelView.Node data) {
-            holder.textView.setText(String.format("%s 月", data.contentToString()));
+        public void onBindItemHolder(@NonNull WheelView.ItemHolder holder, MultiWheelView.Node data) {
             Month month = (Month) data;
             int value = month.value;
             if (value > 7) {
                 --value;
             }
-            String des = (value & 1) == 0 ? "月小" : "月大";
-            holder.text2.setText(des);
-        }
-
-        @Override
-        public void onClearItemHolder(@NonNull TwoLineItemHolder holder) {
-            holder.text2.setText("");
+            holder.textView.setText(String.format("%s 月", data.contentToString()));
+            holder.textView.setSelected((value & 1) != 0);
         }
     }
 
-    private static class SingleLineAdapter extends MultiWheelView.MultiItemAdapter<SingleLineItemHolder> {
+    private static class DayAdapter extends MultiWheelView.MultiItemAdapter<DayItemHolder> {
         @NonNull
         @Override
-        public SingleLineItemHolder onCreateItemHolder(@NonNull ViewGroup parent, int itemLayout) {
-            View itemView = LayoutInflater.from(parent.getContext()).inflate(itemLayout, parent, false);
-            return new SingleLineItemHolder(itemView);
+        public DayItemHolder onCreateItemHolder(@NonNull ViewGroup parent, int itemLayout) {
+            View itemView = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_day, parent, false);
+            return new DayItemHolder(itemView);
         }
 
         @Override
-        public void onBindItemHolder(@NonNull SingleLineItemHolder holder, MultiWheelView.Node data) {
+        public void onBindItemHolder(@NonNull DayItemHolder holder, MultiWheelView.Node data) {
+            Day day = (Day) data;
             holder.textView.setText(data.contentToString());
+            holder.text2.setText(String.valueOf((day.value + 6) / 7));
         }
     }
 
-
-    private static class IconItemHolder extends WheelView.ItemHolder {
-        public final ImageView icon;
-
-        IconItemHolder(View itemView) {
-            super(itemView);
-            icon = itemView.findViewById(R.id.iv_icon);
-        }
-    }
-
-    private static class SingleLineItemHolder extends WheelView.ItemHolder {
-        SingleLineItemHolder(View itemView) {
-            super(itemView);
-            this.textView.setGravity(Gravity.CENTER);
-        }
-    }
-
-    private static class TwoLineItemHolder extends WheelView.ItemHolder {
+    private static class DayItemHolder extends WheelView.ItemHolder {
         public final TextView text2;
 
-        TwoLineItemHolder(View itemView) {
+        DayItemHolder(View itemView) {
             super(itemView);
             this.text2 = itemView.findViewById(android.R.id.text2);
         }
+    }
+
+    private static boolean isLeapYear(int year) {
+        return (year % 400 == 0) || (year % 4 == 0 && year % 100 != 0);
     }
 }
 

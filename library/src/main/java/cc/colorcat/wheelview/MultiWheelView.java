@@ -174,11 +174,6 @@ public class MultiWheelView extends LinearLayout {
         public void onBindItemHolder(@NonNull VH holder, int position) {
             mItemAdapter.onBindItemHolder(holder, getData(mIndex).get(position));
         }
-
-        @Override
-        public void onClearItemHolder(@NonNull VH holder) {
-            mItemAdapter.onClearItemHolder(holder);
-        }
     }
 
 
@@ -226,12 +221,6 @@ public class MultiWheelView extends LinearLayout {
          * 默认的数据绑定仅设置文本，且文本是调用 {@link String#valueOf(Object)} 来转换的。
          */
         public abstract void onBindItemHolder(@NonNull VH holder, Node data);
-
-        /**
-         * 清除占位符中的数据
-         */
-        public void onClearItemHolder(@NonNull VH holder) {
-        }
     }
 
     private static class SimpleMultiItemAdapter extends MultiItemAdapter<WheelView.ItemHolder> {

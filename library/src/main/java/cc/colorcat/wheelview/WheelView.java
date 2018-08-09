@@ -52,6 +52,9 @@ public class WheelView extends FrameLayout {
 
     public static final int INVALID_POSITION = RecyclerView.NO_POSITION;
 
+    private static final int VIEW_TYPE_PLACE_HOLDER = 0;
+    private static final int VIEW_TYPE_DATA = 1;
+
     private View mCoverView;
     private RecyclerView mRecyclerView;
     private LinearLayoutManager mManager;
@@ -176,9 +179,7 @@ public class WheelView extends FrameLayout {
             setRecyclerViewAdapter(new DefaultItemAdapter());
         }
         mData.clear();
-        pushPlaceholderData();
         mData.addAll(data);
-        pushPlaceholderData();
         mAdapter.notifyDataSetChanged();
         if (data.isEmpty()) {
             mSelectedPosition = WheelView.INVALID_POSITION;
@@ -192,12 +193,6 @@ public class WheelView extends FrameLayout {
     private <VH extends ItemHolder> void setRecyclerViewAdapter(ItemAdapter<VH> adapter) {
         mAdapter = new WheelViewAdapter<>(adapter);
         mRecyclerView.setAdapter(mAdapter);
-    }
-
-    private void pushPlaceholderData() {
-        for (int i = 0; i < mPlaceholderCount; ++i) {
-            mData.add("");
-        }
     }
 
     private void notifyItemSelectedChanged() {
@@ -239,45 +234,51 @@ public class WheelView extends FrameLayout {
     }
 
 
-    private class WheelViewAdapter<VH extends ItemHolder> extends RecyclerView.Adapter<WheelViewHolder<VH>> {
+    private class WheelViewAdapter<VH extends ItemHolder> extends RecyclerView.Adapter<WheelViewHolder<? extends ItemHolder>> {
         private final ItemAdapter<VH> mItemAdapter;
 
         private WheelViewAdapter(ItemAdapter<VH> itemAdapter) {
             mItemAdapter = itemAdapter;
         }
 
+        @Override
+        public int getItemViewType(int position) {
+            if (position < mPlaceholderCount || position >= mData.size() + mPlaceholderCount) {
+                return VIEW_TYPE_PLACE_HOLDER;
+            }
+            return VIEW_TYPE_DATA;
+        }
+
+        @Override
+        public int getItemCount() {
+            return mData.size() + mPlaceholderCount + mPlaceholderCount;
+        }
+
         @NonNull
         @Override
-        public WheelViewHolder<VH> onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        public WheelViewHolder<? extends ItemHolder> onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            if (viewType == VIEW_TYPE_PLACE_HOLDER) {
+                View placeHolder = new View(parent.getContext());
+                placeHolder.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                return new WheelViewHolder<>(new ItemHolder(placeHolder));
+            }
             Log.d(TAG, "onCreateWheelViewHolder");
             VH itemHolder = mItemAdapter.onCreateItemHolder(parent, mItemLayout);
             return new WheelViewHolder<>(itemHolder);
         }
 
+        @SuppressWarnings("unchecked")
         @Override
-        public void onBindViewHolder(@NonNull WheelViewHolder<VH> holder, int position) {
-            final VH itemHolder = holder.itemHolder;
-            if (position < mPlaceholderCount || position >= mData.size() - mPlaceholderCount) {
-                // 当前为占位符，清除数据
-                if (itemHolder.textView != null) {
-                    itemHolder.textView.setText("");
-                }
-                mItemAdapter.onClearItemHolder(itemHolder);
-            } else {
-                mItemAdapter.onBindItemHolder(itemHolder, position - mPlaceholderCount);
+        public void onBindViewHolder(@NonNull WheelViewHolder<? extends ItemHolder> holder, int position) {
+            if (holder.getItemViewType() == VIEW_TYPE_DATA) {
+                mItemAdapter.onBindItemHolder((VH) holder.itemHolder, position - mPlaceholderCount);
             }
-
             // 判断当前 item 的高度与测定的高度是否一致，如果不一致则重新设置。
             ViewGroup.LayoutParams lp = holder.itemView.getLayoutParams();
             if (mItemHeight != Integer.MIN_VALUE && lp.height != mItemHeight) {
                 lp.height = mItemHeight;
                 holder.itemView.setLayoutParams(lp);
             }
-        }
-
-        @Override
-        public int getItemCount() {
-            return mData.size();
         }
     }
 
@@ -329,12 +330,6 @@ public class WheelView extends FrameLayout {
          * 默认的数据绑定仅设置文本，且文本是调用 {@link String#valueOf(Object)} 来转换的。
          */
         public abstract void onBindItemHolder(@NonNull VH holder, int position);
-
-        /**
-         * 清除占位符中的数据
-         */
-        public void onClearItemHolder(@NonNull VH holder) {
-        }
     }
 
 
