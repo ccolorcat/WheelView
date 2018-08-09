@@ -173,7 +173,7 @@ public class WheelView extends FrameLayout {
             throw new IllegalArgumentException("data == null");
         }
         if (mAdapter == null) {
-            setRecyclerViewAdapter(new SimpleItemAdapter());
+            setRecyclerViewAdapter(new DefaultItemAdapter());
         }
         mData.clear();
         pushPlaceholderData();
@@ -282,6 +282,21 @@ public class WheelView extends FrameLayout {
     }
 
 
+    private class DefaultItemAdapter extends ItemAdapter<ItemHolder> {
+        @NonNull
+        @Override
+        public ItemHolder onCreateItemHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout) {
+            View itemView = LayoutInflater.from(parent.getContext()).inflate(itemLayout, parent, false);
+            return new ItemHolder(itemView);
+        }
+
+        @Override
+        public void onBindItemHolder(@NonNull ItemHolder holder, int position) {
+            holder.textView.setText(String.valueOf(mData.get(position + mPlaceholderCount)));
+        }
+    }
+
+
     private static class WheelViewHolder<VH extends ItemHolder> extends RecyclerView.ViewHolder {
         private VH itemHolder;
 
@@ -319,20 +334,6 @@ public class WheelView extends FrameLayout {
          * 清除占位符中的数据
          */
         public void onClearItemHolder(@NonNull VH holder) {
-        }
-    }
-
-    private class SimpleItemAdapter extends ItemAdapter<ItemHolder> {
-        @NonNull
-        @Override
-        public ItemHolder onCreateItemHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout) {
-            View itemView = LayoutInflater.from(parent.getContext()).inflate(itemLayout, parent, false);
-            return new ItemHolder(itemView);
-        }
-
-        @Override
-        public void onBindItemHolder(@NonNull ItemHolder holder, int position) {
-            holder.textView.setText(String.valueOf(mData.get(position + mPlaceholderCount)));
         }
     }
 
