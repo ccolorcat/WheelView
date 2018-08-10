@@ -119,7 +119,7 @@ public class WheelView extends FrameLayout {
             public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
                 mScrollStateIdle = newState == RecyclerView.SCROLL_STATE_IDLE;
                 if (!mUpdateOnIdle || mScrollStateIdle) {
-                    checkAndNotify(false);
+                    notifyDataStateChanged(false);
                 }
             }
         });
@@ -156,6 +156,17 @@ public class WheelView extends FrameLayout {
         setBackground(mCoverView, drawable);
     }
 
+    public void setCoverView(View view) {
+        if (view == null) {
+            throw new IllegalArgumentException("view == null");
+        }
+        if (mCoverView != null) {
+            super.removeView(mCoverView);
+        }
+        addChildView(view);
+        mCoverView = view;
+    }
+
     private void addCoverView(Context context) {
         mCoverView = new View(context);
         mCoverView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
@@ -180,7 +191,7 @@ public class WheelView extends FrameLayout {
         mData.clear();
         mData.addAll(data);
         mAdapter.notifyDataSetChanged();
-        checkAndNotify(true);
+        notifyDataStateChanged(true);
     }
 
     private <VH extends ItemHolder> void setRecyclerViewAdapter(ItemAdapter<VH> adapter) {
@@ -218,7 +229,22 @@ public class WheelView extends FrameLayout {
         }
     }
 
-    private void checkAndNotify(boolean forceUpdate) {
+    public int getSelectedItemPosition() {
+        return mSelectedPosition;
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        if (changed) {
+            mItemHeight = (bottom - top) / mDisplayCount;
+            if (mAdapter != null) {
+                mAdapter.notifyDataSetChanged();
+            }
+        }
+    }
+
+    private void notifyDataStateChanged(boolean forceUpdate) {
         boolean changed = false;
         final int first = mManager.findFirstCompletelyVisibleItemPosition();
         if (first != mSelectedPosition) {
@@ -230,11 +256,10 @@ public class WheelView extends FrameLayout {
             if (forceUpdate && !mData.isEmpty()) {
                 if (mSelectedPosition < 0) {
                     mSelectedPosition = 0;
-                    changed = true;
                 } else if (mSelectedPosition >= size) {
                     mSelectedPosition = size - 1;
-                    changed = true;
                 }
+                changed = true;
             } else {
                 mSelectedPosition = WheelView.INVALID_POSITION;
             }
@@ -246,7 +271,6 @@ public class WheelView extends FrameLayout {
             notifyItemSelectedChanged();
         }
     }
-
 
     private void notifyItemSelectedChanged() {
         if (mListeners != null) {
@@ -266,21 +290,6 @@ public class WheelView extends FrameLayout {
                 for (int i = 0, size = mObservers.size(); i < size; ++i) {
                     mObservers.get(i).onDataInvalid();
                 }
-            }
-        }
-    }
-
-    public int getSelectedItemPosition() {
-        return mSelectedPosition;
-    }
-
-    @Override
-    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-        super.onLayout(changed, left, top, right, bottom);
-        if (changed) {
-            mItemHeight = (bottom - top) / mDisplayCount;
-            if (mAdapter != null) {
-                mAdapter.notifyDataSetChanged();
             }
         }
     }
@@ -349,6 +358,27 @@ public class WheelView extends FrameLayout {
     }
 
 
+    private static void setBackground(View view, Drawable background) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            view.setBackground(background);
+        } else {
+            view.setBackgroundDrawable(background);
+        }
+    }
+
+    private static Drawable buildCoverBackground(@ColorInt int coverColor) {
+        int red = Color.red(coverColor);
+        int green = Color.green(coverColor);
+        int blue = Color.blue(coverColor);
+        int alpha = Color.alpha(coverColor);
+
+        int quarter = Color.argb((int) (alpha * 0.75), red, green, blue);
+        int center = Color.argb((int) (alpha * 0.1), red, green, blue);
+        int[] colors = {coverColor, quarter, center, quarter, coverColor};
+        return new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors);
+    }
+
+
     private static class WheelViewHolder<VH extends ItemHolder> extends RecyclerView.ViewHolder {
         private VH itemHolder;
 
@@ -393,25 +423,5 @@ public class WheelView extends FrameLayout {
         void onDataChanged(int position);
 
         void onDataInvalid();
-    }
-
-    private static void setBackground(View view, Drawable background) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            view.setBackground(background);
-        } else {
-            view.setBackgroundDrawable(background);
-        }
-    }
-
-    private static Drawable buildCoverBackground(@ColorInt int coverColor) {
-        int red = Color.red(coverColor);
-        int green = Color.green(coverColor);
-        int blue = Color.blue(coverColor);
-        int alpha = Color.alpha(coverColor);
-
-        int quarter = Color.argb((int) (alpha * 0.75), red, green, blue);
-        int center = Color.argb((int) (alpha * 0.1), red, green, blue);
-        int[] colors = {coverColor, quarter, center, quarter, coverColor};
-        return new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors);
     }
 }
