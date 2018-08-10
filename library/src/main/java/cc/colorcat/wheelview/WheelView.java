@@ -32,7 +32,6 @@ import android.support.v7.widget.LinearSnapHelper;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SnapHelper;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -67,6 +66,9 @@ public class WheelView extends FrameLayout {
     private int mItemHeight = Integer.MIN_VALUE;
     private int mSelectedPosition = WheelView.INVALID_POSITION; // 正中间的 item 的 position
     private List<OnItemSelectedListener> mListeners;
+    private List<TargetDataObserver> mObservers;
+    boolean mScrollStateIdle = true;
+    boolean mUpdateOnIdle = true;
 
     public WheelView(@NonNull Context context) {
         super(context);
@@ -115,12 +117,9 @@ public class WheelView extends FrameLayout {
         mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
-                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                    int first = mManager.findFirstCompletelyVisibleItemPosition();
-                    if (mSelectedPosition != first) {
-                        mSelectedPosition = first;
-                        notifyItemSelectedChanged();
-                    }
+                mScrollStateIdle = newState == RecyclerView.SCROLL_STATE_IDLE;
+                if (!mUpdateOnIdle || mScrollStateIdle) {
+                    checkAndNotify(false);
                 }
             }
         });
@@ -181,26 +180,12 @@ public class WheelView extends FrameLayout {
         mData.clear();
         mData.addAll(data);
         mAdapter.notifyDataSetChanged();
-        if (data.isEmpty()) {
-            mSelectedPosition = WheelView.INVALID_POSITION;
-        } else {
-            mSelectedPosition = 0;
-            mRecyclerView.smoothScrollToPosition(mSelectedPosition);
-        }
-        notifyItemSelectedChanged();
+        checkAndNotify(true);
     }
 
     private <VH extends ItemHolder> void setRecyclerViewAdapter(ItemAdapter<VH> adapter) {
         mAdapter = new WheelViewAdapter<>(adapter);
         mRecyclerView.setAdapter(mAdapter);
-    }
-
-    private void notifyItemSelectedChanged() {
-        if (mListeners != null) {
-            for (int i = 0, size = mListeners.size(); i < size; ++i) {
-                mListeners.get(i).onItemSelected(mSelectedPosition);
-            }
-        }
     }
 
     public void addOnItemSelectedListener(OnItemSelectedListener listener) {
@@ -215,6 +200,73 @@ public class WheelView extends FrameLayout {
     public void removeOnItemSelectedListener(OnItemSelectedListener listener) {
         if (listener != null && mListeners != null) {
             mListeners.remove(listener);
+        }
+    }
+
+    public void registerTargetDataObserver(TargetDataObserver observer) {
+        if (observer != null) {
+            if (mObservers == null) {
+                mObservers = new ArrayList<>(4);
+            }
+            mObservers.add(observer);
+        }
+    }
+
+    public void unregisterTargetDataObserver(TargetDataObserver observer) {
+        if (observer != null && mObservers != null) {
+            mObservers.remove(observer);
+        }
+    }
+
+    private void checkAndNotify(boolean forceUpdate) {
+        boolean changed = false;
+        final int first = mManager.findFirstCompletelyVisibleItemPosition();
+        if (first != mSelectedPosition) {
+            mSelectedPosition = first;
+            changed = true;
+        }
+        final int size = mData.size();
+        if (mSelectedPosition < 0 || mSelectedPosition >= size) {
+            if (forceUpdate && !mData.isEmpty()) {
+                if (mSelectedPosition < 0) {
+                    mSelectedPosition = 0;
+                    changed = true;
+                } else if (mSelectedPosition >= size) {
+                    mSelectedPosition = size - 1;
+                    changed = true;
+                }
+            } else {
+                mSelectedPosition = WheelView.INVALID_POSITION;
+            }
+        }
+        if (changed || forceUpdate) {
+            notifyTargetDataChanged();
+        }
+        if (changed && mScrollStateIdle) {
+            notifyItemSelectedChanged();
+        }
+    }
+
+
+    private void notifyItemSelectedChanged() {
+        if (mListeners != null) {
+            for (int i = 0, size = mListeners.size(); i < size; ++i) {
+                mListeners.get(i).onItemSelected(mSelectedPosition);
+            }
+        }
+    }
+
+    private void notifyTargetDataChanged() {
+        if (mObservers != null) {
+            if (mSelectedPosition != WheelView.INVALID_POSITION) {
+                for (int i = 0, size = mObservers.size(); i < size; ++i) {
+                    mObservers.get(i).onDataChanged(mSelectedPosition);
+                }
+            } else {
+                for (int i = 0, size = mObservers.size(); i < size; ++i) {
+                    mObservers.get(i).onDataInvalid();
+                }
+            }
         }
     }
 
@@ -258,11 +310,10 @@ public class WheelView extends FrameLayout {
         @Override
         public WheelViewHolder<? extends ItemHolder> onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             if (viewType == VIEW_TYPE_PLACE_HOLDER) {
-                View placeHolder = new View(parent.getContext());
-                placeHolder.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-                return new WheelViewHolder<>(new ItemHolder(placeHolder));
+                View placeholder = new View(parent.getContext());
+                placeholder.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                return new WheelViewHolder<>(new ItemHolder(placeholder));
             }
-            Log.d(TAG, "onCreateWheelViewHolder");
             VH itemHolder = mItemAdapter.onCreateItemHolder(parent, mItemLayout);
             return new WheelViewHolder<>(itemHolder);
         }
@@ -337,6 +388,12 @@ public class WheelView extends FrameLayout {
         void onItemSelected(int position);
     }
 
+
+    public interface TargetDataObserver {
+        void onDataChanged(int position);
+
+        void onDataInvalid();
+    }
 
     private static void setBackground(View view, Drawable background) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {

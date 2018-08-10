@@ -24,6 +24,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -70,6 +71,7 @@ public class MultiWheelView extends LinearLayout {
         @LayoutRes
         int layout = ta.getResourceId(R.styleable.MultiWheelView_wheelViewLayout, R.layout.wheel_view_layout_multi_wheel_view);
         mCount = ta.getInteger(R.styleable.MultiWheelView_wheelViewCount, 1);
+        boolean updateOnIdle = ta.getBoolean(R.styleable.MultiWheelView_updateOnIdle, true);
         ta.recycle();
 
         if (mCount < 1) {
@@ -83,7 +85,13 @@ public class MultiWheelView extends LinearLayout {
             WheelView view = (WheelView) inflater.inflate(layout, this, false);
             mViews[i] = view;
             mData[i] = new ArrayList<Node>();
-            view.addOnItemSelectedListener(i != mCount - 1 ? new WheelViewSelectedListener(i) : new LastWheelViewSelectedListener());
+            if (i != mCount - 1) {
+                view.mUpdateOnIdle = updateOnIdle;
+                view.registerTargetDataObserver(new WheelViewDataObserver(i));
+            } else {
+                view.mUpdateOnIdle = true;
+                view.registerTargetDataObserver(new LastWheelViewDataObserver());
+            }
             view.setItemAdapter(new InnerItemAdapter<>(i, new SimpleMultiItemAdapter()));
             addChildView(view);
         }
@@ -177,15 +185,25 @@ public class MultiWheelView extends LinearLayout {
     }
 
 
-    private class WheelViewSelectedListener implements WheelView.OnItemSelectedListener {
+    private class WheelViewDataObserver implements WheelView.TargetDataObserver {
         private final int mIndex;
 
-        private WheelViewSelectedListener(int index) {
+        private WheelViewDataObserver(int index) {
             mIndex = index;
         }
 
         @Override
-        public void onItemSelected(int position) {
+        public void onDataChanged(int position) {
+            updateNextItemData(position);
+        }
+
+        @Override
+        public void onDataInvalid() {
+            updateNextItemData(WheelView.INVALID_POSITION);
+        }
+
+        private void updateNextItemData(int position) {
+            Log.e(WheelView.TAG, "updateNextItemData, position = " + position + ", currentIndex = " + mIndex);
             List<Node> next = getData(mIndex + 1);
             next.clear();
             next.addAll(position != WheelView.INVALID_POSITION ? getData(mIndex).get(position).children() : Collections.<Node>emptyList());
@@ -193,10 +211,25 @@ public class MultiWheelView extends LinearLayout {
         }
     }
 
-
-    private class LastWheelViewSelectedListener implements WheelView.OnItemSelectedListener {
+    private class LastWheelViewDataObserver implements WheelView.TargetDataObserver {
         @Override
-        public void onItemSelected(int position) {
+        public void onDataChanged(int position) {
+            notifySelectedChanged();
+        }
+
+        @Override
+        public void onDataInvalid() {
+            notifySelectedChanged();
+        }
+
+        private void notifySelectedChanged() {
+            if (mListeners == null) return;
+            for (WheelView view : mViews) {
+                if (!view.mScrollStateIdle) {
+                    return;
+                }
+            }
+            Log.d(WheelView.TAG, "notifySelectedChanged");
             if (mListeners != null) {
                 int[] selectedPositions = new int[mCount];
                 for (int i = 0; i < mCount; ++i) {
@@ -238,9 +271,32 @@ public class MultiWheelView extends LinearLayout {
     }
 
 
+    public static abstract class SafeOnSelectedChangeListener implements OnSelectedChangeListener {
+        @Override
+        public void onSelectedChanged(int... positions) {
+            for (int position : positions) {
+                if (position == WheelView.INVALID_POSITION) {
+                    return;
+                }
+            }
+            onSafeSelectedChanged(positions);
+        }
+
+        /**
+         * @param positions 其中所有的值都不可能为 {@link WheelView#INVALID_POSITION}
+         * @see OnSelectedChangeListener
+         * @see WheelView#INVALID_POSITION
+         */
+        public abstract void onSafeSelectedChanged(int... positions);
+    }
+
+
     public interface OnSelectedChangeListener {
         /**
          * @param positions 长度等于 xml 布局中 wheelViewCount，且顺次对应。
+         *                  Note: positions 中可能存在 {@link WheelView#INVALID_POSITION} 值，此种情况说明所对应的数据为空。
+         * @see SafeOnSelectedChangeListener
+         * @see WheelView#INVALID_POSITION
          */
         void onSelectedChanged(int... positions);
     }

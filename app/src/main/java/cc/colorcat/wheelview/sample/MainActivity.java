@@ -1,6 +1,5 @@
 package cc.colorcat.wheelview.sample;
 
-import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
@@ -13,6 +12,7 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import cc.colorcat.wheelview.MultiWheelView;
 import cc.colorcat.wheelview.WheelView;
@@ -36,14 +36,13 @@ public class MainActivity extends AppCompatActivity {
         final TextView content = findViewById(R.id.tv_content);
 
         wheelView = findViewById(R.id.mwv_calendar);
-        wheelView.addOnSelectedChangeListener(new MultiWheelView.OnSelectedChangeListener() {
-            @SuppressLint("DefaultLocale")
+        wheelView.addOnSelectedChangeListener(new MultiWheelView.SafeOnSelectedChangeListener() {
             @Override
-            public void onSelectedChanged(int... positions) {
+            public void onSafeSelectedChanged(int... positions) {
                 Year year = mYears.get(positions[0]);
                 Month month = (Month) year.children().get(positions[1]);
                 Day day = (Day) month.children().get(positions[2]);
-                content.setText(String.format("%d 年 %d 月 %d 日", year.value, month.value, day.value));
+                content.setText(String.format(Locale.getDefault(), "%d 年 %d 月 %d 日", year.value, month.value, day.value));
             }
         });
         wheelView.setMultiItemAdapter(0, new YearAdapter());
