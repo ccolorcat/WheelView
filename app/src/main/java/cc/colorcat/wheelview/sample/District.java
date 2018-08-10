@@ -16,34 +16,9 @@
 
 package cc.colorcat.wheelview.sample;
 
-import android.support.annotation.NonNull;
-
-import com.google.gson.annotations.SerializedName;
-
-import java.util.List;
-
-import cc.colorcat.wheelview.MultiWheelView;
-
-
 /**
  * Created by cxx on 2018/4/27.
  * xx.ch@outlook.com
  */
-public class City extends Region {
-    @SerializedName("children")
-    private List<District> districts;
-
-    public List<District> getDistricts() {
-        return districts;
-    }
-
-    public void setDistricts(List<District> districts) {
-        this.districts = districts;
-    }
-
-    @NonNull
-    @Override
-    public List<District> children() {
-        return districts;
-    }
+public class District extends Region {
 }

@@ -16,9 +16,59 @@
 
 package cc.colorcat.wheelview.sample;
 
+import android.support.annotation.NonNull;
+
+import com.google.gson.annotations.SerializedName;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+
+import cc.colorcat.wheelview.MultiWheelView;
+
+
 /**
  * Created by cxx on 2018/4/27.
  * xx.ch@outlook.com
  */
-public class Region extends Area {
+public class Region implements MultiWheelView.Node {
+    @SerializedName("code")
+    private String code;
+    @SerializedName("name")
+    private String name;
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public String contentToString() {
+        return name;
+    }
+
+    @NonNull
+    @Override
+    public List<? extends MultiWheelView.Node> children() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + '{' +
+                "code='" + code + '\'' +
+                ", name='" + name + '\'' +
+                '}';
+    }
 }

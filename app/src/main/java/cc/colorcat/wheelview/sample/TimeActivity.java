@@ -17,7 +17,7 @@ import java.util.Locale;
 import cc.colorcat.wheelview.MultiWheelView;
 import cc.colorcat.wheelview.WheelView;
 
-public class MainActivity extends AppCompatActivity {
+public class TimeActivity extends AppCompatActivity {
     private final List<Year> mYears = new ArrayList<>(100);
 
     {
@@ -31,11 +31,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_multi_wheel_view);
 
         final TextView content = findViewById(R.id.tv_content);
 
-        wheelView = findViewById(R.id.mwv_calendar);
+        wheelView = findViewById(R.id.multi_wheel_view);
         wheelView.addOnSelectedChangeListener(new MultiWheelView.SafeOnSelectedChangeListener() {
             @Override
             public void onSafeSelectedChanged(int... positions) {

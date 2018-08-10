@@ -32,6 +32,7 @@ import android.support.v7.widget.LinearSnapHelper;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SnapHelper;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -117,8 +118,17 @@ public class WheelView extends FrameLayout {
         mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+                Log.d(TAG, "onScrollStateChanged, newState = " + newState);
                 mScrollStateIdle = newState == RecyclerView.SCROLL_STATE_IDLE;
-                if (!mUpdateOnIdle || mScrollStateIdle) {
+                if (mScrollStateIdle) {
+                    notifyDataStateChanged(false);
+                }
+            }
+
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                Log.v(TAG, "onScrolled, dx = " + dx + ", dy = " + dy);
+                if (!mUpdateOnIdle) {
                     notifyDataStateChanged(false);
                 }
             }
@@ -177,7 +187,7 @@ public class WheelView extends FrameLayout {
         if (adapter == null) {
             throw new NullPointerException("adapter == null");
         }
-        setRecyclerViewAdapter(adapter);
+        setRealAdapter(adapter);
         mAdapter.notifyDataSetChanged();
     }
 
@@ -185,16 +195,17 @@ public class WheelView extends FrameLayout {
         if (data == null) {
             throw new IllegalArgumentException("data == null");
         }
-        if (mAdapter == null) {
-            setRecyclerViewAdapter(new DefaultItemAdapter());
-        }
         mData.clear();
         mData.addAll(data);
-        mAdapter.notifyDataSetChanged();
+        if (mAdapter == null) {
+            setRealAdapter(new DefaultItemAdapter());
+        } else {
+            mAdapter.notifyDataSetChanged();
+        }
         notifyDataStateChanged(true);
     }
 
-    private <VH extends ItemHolder> void setRecyclerViewAdapter(ItemAdapter<VH> adapter) {
+    private <VH extends ItemHolder> void setRealAdapter(ItemAdapter<VH> adapter) {
         mAdapter = new WheelViewAdapter<>(adapter);
         mRecyclerView.setAdapter(mAdapter);
     }
@@ -353,7 +364,7 @@ public class WheelView extends FrameLayout {
 
         @Override
         public void onBindItemHolder(@NonNull ItemHolder holder, int position) {
-            holder.textView.setText(String.valueOf(mData.get(position + mPlaceholderCount)));
+            holder.textView.setText(String.valueOf(mData.get(position)));
         }
     }
 
@@ -413,6 +424,17 @@ public class WheelView extends FrameLayout {
         public abstract void onBindItemHolder(@NonNull VH holder, int position);
     }
 
+
+    public static abstract class SafeOnItemSelectedListener implements OnItemSelectedListener {
+        @Override
+        public void onItemSelected(int position) {
+            if (position != WheelView.INVALID_POSITION) {
+                onSafeItemSelected(position);
+            }
+        }
+
+        public abstract void onSafeItemSelected(int position);
+    }
 
     public interface OnItemSelectedListener {
         void onItemSelected(int position);

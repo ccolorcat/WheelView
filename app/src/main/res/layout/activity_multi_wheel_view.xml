@@ -14,7 +14,7 @@
         tools:text="测试内容" />
 
     <cc.colorcat.wheelview.MultiWheelView
-        android:id="@+id/mwv_calendar"
+        android:id="@+id/multi_wheel_view"
         android:layout_width="match_parent"
         android:layout_height="160dp"
         android:layout_marginTop="32dp"

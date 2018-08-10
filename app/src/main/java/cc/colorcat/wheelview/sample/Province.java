@@ -29,7 +29,7 @@ import cc.colorcat.wheelview.MultiWheelView;
  * Created by cxx on 2018/4/27.
  * xx.ch@outlook.com
  */
-public class Province extends Area {
+public class Province extends Region {
     @SerializedName("children")
     private List<City> cities;
 
@@ -43,14 +43,7 @@ public class Province extends Area {
 
     @NonNull
     @Override
-    public List<? extends MultiWheelView.Node> children() {
+    public List<City> children() {
         return cities;
-    }
-
-    @Override
-    public String toString() {
-        return "Province{" +
-                "cities=" + cities +
-                '}';
     }
 }

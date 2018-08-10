@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">WheelView</string>
     <string name="refresh">refresh</string>
+    <string name="time">年 月 日</string>
+    <string name="region">省 市 县</string>
+    <string name="province">省</string>
 </resources>
