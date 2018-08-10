@@ -18,10 +18,26 @@ package cc.colorcat.wheelview.sample;
 
 import android.support.v7.app.AppCompatActivity;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Author: cxx
  * Date: 2018-08-10
  * GitHub: https://github.com/ccolorcat
  */
 public class AreaActivity extends AppCompatActivity {
+    private List<Province> mProvinces = new ArrayList<>();
+
+    private void loadData() {
+        InputStream input = getResources().openRawResource(R.raw.area);
+        Gson gson = new Gson();
+        List<Province> provinces = gson.fromJson(new InputStreamReader(input), new TypeToken<List<Province>>() {}.getType());
+        mProvinces.addAll(provinces);
+    }
 }
