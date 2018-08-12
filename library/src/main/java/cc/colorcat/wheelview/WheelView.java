@@ -60,6 +60,7 @@ public class WheelView extends FrameLayout {
     private LinearLayoutManager mManager;
     private RecyclerView.Adapter mAdapter;
     private List<Object> mData = new ArrayList<>();
+    private boolean mDataUpdated = false;
     @LayoutRes
     private int mItemLayout;
     private int mDisplayCount; // 同时显示的 item 数量
@@ -118,7 +119,6 @@ public class WheelView extends FrameLayout {
         mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
-                Log.d(TAG, "onScrollStateChanged, newState = " + newState);
                 mScrollStateIdle = newState == RecyclerView.SCROLL_STATE_IDLE;
                 if (mScrollStateIdle) {
                     notifyDataStateChanged(false);
@@ -127,7 +127,6 @@ public class WheelView extends FrameLayout {
 
             @Override
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                Log.v(TAG, "onScrolled, dx = " + dx + ", dy = " + dy);
                 if (!mUpdateOnIdle) {
                     notifyDataStateChanged(false);
                 }
@@ -197,12 +196,12 @@ public class WheelView extends FrameLayout {
         }
         mData.clear();
         mData.addAll(data);
+        mDataUpdated = true;
         if (mAdapter == null) {
             setRealAdapter(new DefaultItemAdapter());
         } else {
             mAdapter.notifyDataSetChanged();
         }
-        notifyDataStateChanged(true);
     }
 
     private <VH extends ItemHolder> void setRealAdapter(ItemAdapter<VH> adapter) {
@@ -247,33 +246,26 @@ public class WheelView extends FrameLayout {
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
+        Log.e(TAG, "WheelView.onLayout, changed = " + changed);
         if (changed) {
             mItemHeight = (bottom - top) / mDisplayCount;
             if (mAdapter != null) {
+                Log.e(TAG, "WheelView.onLayout, changed = true, mAdapter has set");
                 mAdapter.notifyDataSetChanged();
             }
+        }
+        if (mDataUpdated) {
+            mDataUpdated = false;
+            notifyDataStateChanged(true);
         }
     }
 
     private void notifyDataStateChanged(boolean forceUpdate) {
         boolean changed = false;
-        final int first = mManager.findFirstCompletelyVisibleItemPosition();
-        if (first != mSelectedPosition) {
-            mSelectedPosition = first;
+        final int selected = mData.isEmpty() ? WheelView.INVALID_POSITION : mManager.findFirstVisibleItemPosition();
+        if (selected != mSelectedPosition) {
+            mSelectedPosition = selected;
             changed = true;
-        }
-        final int size = mData.size();
-        if (mSelectedPosition < 0 || mSelectedPosition >= size) {
-            if (forceUpdate && !mData.isEmpty()) {
-                if (mSelectedPosition < 0) {
-                    mSelectedPosition = 0;
-                } else if (mSelectedPosition >= size) {
-                    mSelectedPosition = size - 1;
-                }
-                changed = true;
-            } else {
-                mSelectedPosition = WheelView.INVALID_POSITION;
-            }
         }
         if (changed || forceUpdate) {
             notifyTargetDataChanged();

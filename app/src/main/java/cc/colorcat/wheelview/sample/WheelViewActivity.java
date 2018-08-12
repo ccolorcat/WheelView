@@ -19,6 +19,8 @@ package cc.colorcat.wheelview.sample;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
@@ -33,6 +35,7 @@ import cc.colorcat.wheelview.WheelView;
 
 public class WheelViewActivity extends AppCompatActivity {
     private List<Province> mProvince = new ArrayList<>(35);
+    private WheelView mWheelView;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -41,22 +44,46 @@ public class WheelViewActivity extends AppCompatActivity {
 
         final TextView content = findViewById(R.id.tv_content);
 
-        WheelView wheelView = findViewById(R.id.wheel_view);
-        wheelView.addOnItemSelectedListener(new WheelView.SafeOnItemSelectedListener() {
+        mWheelView = findViewById(R.id.wheel_view);
+        mWheelView.addOnItemSelectedListener(new WheelView.OnItemSelectedListener() {
             @Override
-            public void onSafeItemSelected(int position) {
-                content.setText(mProvince.get(position).getName());
+            public void onItemSelected(int position) {
+                if (position != WheelView.INVALID_POSITION) {
+                    content.setText(mProvince.get(position).getName());
+                } else {
+                    content.setText("");
+                }
             }
         });
-        fillData(wheelView);
+        refreshData();
     }
 
-    private void fillData(WheelView wheelView) {
-        InputStream input = getResources().openRawResource(R.raw.region);
-        Gson gson = new Gson();
-        List<Province> provinces = gson.fromJson(new InputStreamReader(input), new TypeToken<List<Province>>() {
-        }.getType());
-        mProvince.addAll(provinces);
-        wheelView.updateItemData(mProvince);
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.refresh:
+                refreshData();
+                break;
+            default:
+                break;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void refreshData() {
+        if (mProvince.isEmpty()) {
+            InputStream input = getResources().openRawResource(R.raw.region);
+            Gson gson = new Gson();
+            List<Province> provinces = gson.fromJson(new InputStreamReader(input), new TypeToken<List<Province>>() {
+            }.getType());
+            mProvince.addAll(provinces);
+        }
+        mWheelView.updateItemData(mProvince);
     }
 }

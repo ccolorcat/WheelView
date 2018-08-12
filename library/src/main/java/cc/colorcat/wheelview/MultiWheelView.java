@@ -223,13 +223,6 @@ public class MultiWheelView extends LinearLayout {
         }
 
         private void notifySelectedChanged() {
-            if (mListeners == null) return;
-//            for (WheelView view : mViews) {
-//                if (!view.mScrollStateIdle) {
-//                    return;
-//                }
-//            }
-            Log.d(WheelView.TAG, "notifySelectedChanged");
             if (mListeners != null) {
                 int[] selectedPositions = new int[mCount];
                 for (int i = 0; i < mCount; ++i) {

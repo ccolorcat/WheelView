@@ -66,9 +66,10 @@ public class Region implements MultiWheelView.Node {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + '{' +
-                "code='" + code + '\'' +
-                ", name='" + name + '\'' +
-                '}';
+        return getClass().getSimpleName() + ", " + name;
+//        return getClass().getSimpleName() + '{' +
+//                "code='" + code + '\'' +
+//                ", name='" + name + '\'' +
+//                '}';
     }
 }
