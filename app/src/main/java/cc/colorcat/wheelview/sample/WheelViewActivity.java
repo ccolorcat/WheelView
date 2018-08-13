@@ -23,11 +23,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -77,13 +72,13 @@ public class WheelViewActivity extends AppCompatActivity {
     }
 
     private void refreshData() {
-        if (mProvince.isEmpty()) {
-            InputStream input = getResources().openRawResource(R.raw.region);
-            Gson gson = new Gson();
-            List<Province> provinces = gson.fromJson(new InputStreamReader(input), new TypeToken<List<Province>>() {
-            }.getType());
-            mProvince.addAll(provinces);
-        }
-        mWheelView.updateItemData(mProvince);
+        new RegionLoader(this).load(new RegionLoader.OnLoadedListener() {
+            @Override
+            public void onLoaded(List<Province> provinces) {
+                mProvince.clear();
+                mProvince.addAll(provinces);
+                mWheelView.updateItemData(mProvince);
+            }
+        });
     }
 }

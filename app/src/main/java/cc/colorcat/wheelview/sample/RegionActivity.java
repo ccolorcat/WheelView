@@ -21,11 +21,6 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.TextView;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -59,12 +54,14 @@ public class RegionActivity extends AppCompatActivity {
         fillData(multiWheelView);
     }
 
-    private void fillData(MultiWheelView multiWheelView) {
-        InputStream input = getResources().openRawResource(R.raw.region);
-        Gson gson = new Gson();
-        List<Province> provinces = gson.fromJson(new InputStreamReader(input), new TypeToken<List<Province>>() {
-        }.getType());
-        mProvinces.addAll(provinces);
-        multiWheelView.updateData(mProvinces);
+    private void fillData(final MultiWheelView multiWheelView) {
+        new RegionLoader(this).load(new RegionLoader.OnLoadedListener() {
+            @Override
+            public void onLoaded(List<Province> provinces) {
+                mProvinces.clear();
+                mProvinces.addAll(provinces);
+                multiWheelView.updateData(mProvinces);
+            }
+        });
     }
 }

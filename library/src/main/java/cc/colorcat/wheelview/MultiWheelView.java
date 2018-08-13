@@ -18,6 +18,7 @@ package cc.colorcat.wheelview;
 
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.support.annotation.LayoutRes;
 import android.support.annotation.NonNull;
@@ -117,13 +118,21 @@ public class MultiWheelView extends LinearLayout {
         return mCount;
     }
 
+    public void setCoverBackground(int index, Drawable drawable) {
+        checkIndex(index);
+        mViews[index].setCoverBackground(drawable);
+    }
+
+    public void setCoverView(int index, View view) {
+        checkIndex(index);
+        mViews[index].setCoverView(view);
+    }
+
     public <VH extends WheelView.ItemHolder> void setMultiItemAdapter(int index, MultiItemAdapter<VH> adapter) {
         if (adapter == null) {
             throw new NullPointerException("adapter == null");
         }
-        if (index < 0 || index >= mCount) {
-            throw new IndexOutOfBoundsException(String.format("index[0, %d) = %d", mCount, index));
-        }
+        checkIndex(index);
         mViews[index].setItemAdapter(new InnerItemAdapter<>(index, adapter));
     }
 
@@ -162,6 +171,11 @@ public class MultiWheelView extends LinearLayout {
         return (List<Node>) mData[index];
     }
 
+    private void checkIndex(int index) {
+        if (index < 0 || index >= mCount) {
+            throw new IndexOutOfBoundsException(String.format("index[0, %d) = %d", mCount, index));
+        }
+    }
 
     private class InnerItemAdapter<VH extends WheelView.ItemHolder> extends WheelView.ItemAdapter<VH> {
         private final int mIndex;
