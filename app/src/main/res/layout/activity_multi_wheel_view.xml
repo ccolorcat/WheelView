@@ -11,14 +11,14 @@
         android:id="@+id/tv_content"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-            tools:text="测试内容" />
+        tools:text="测试内容" />
 
     <cc.colorcat.wheelview.MultiWheelView
         android:id="@+id/multi_wheel_view"
         android:layout_width="match_parent"
         android:layout_height="160dp"
         android:layout_marginTop="32dp"
-        app:radicalNotify="true"
+        app:radicalNotify="false"
         app:wheelViewCount="3"
         app:wheelViewLayout="@layout/item_wheel_view" />
 

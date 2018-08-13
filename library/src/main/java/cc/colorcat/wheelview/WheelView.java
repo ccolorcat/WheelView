@@ -109,12 +109,14 @@ public class WheelView extends FrameLayout {
         TypedArray ta = context.obtainStyledAttributes(attrs, R.styleable.WheelView);
         mDisplayCount = ta.getInteger(R.styleable.WheelView_displayCount, 3);
         mItemLayout = ta.getResourceId(R.styleable.WheelView_itemLayout, android.R.layout.simple_list_item_1);
-        int coverColor = ta.getColor(R.styleable.WheelView_coverColor, Color.TRANSPARENT);
+        mRadicalNotify = ta.getBoolean(R.styleable.WheelView_radicalNotify, false);
+        int maskColor = ta.getColor(R.styleable.WheelView_maskColor, Color.TRANSPARENT);
         ta.recycle();
 
         if (mDisplayCount < 1) {
             throw new IllegalArgumentException("displayCount must be greater than 0");
         }
+        // 为偶数，则修正为奇数
         if ((mDisplayCount & 1) == 0) {
             if (mDisplayCount > 5) {
                 --mDisplayCount;
@@ -132,6 +134,7 @@ public class WheelView extends FrameLayout {
             @Override
             public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
                 mScrollStateIdle = newState == RecyclerView.SCROLL_STATE_IDLE;
+                // 滚动停止检测中间项的数据变化
                 if (mScrollStateIdle) {
                     notifyDataStateChanged(false);
                 }
@@ -139,18 +142,21 @@ public class WheelView extends FrameLayout {
 
             @Override
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                // 如果 mRadicalNotify 为 true 则滚动中也检测中间项的数据变化
                 if (mRadicalNotify) {
                     notifyDataStateChanged(false);
                 }
             }
         });
+        // 保证有一个 item 处于整个 RecyclerView 的中间位置。
         SnapHelper helper = new LinearSnapHelper();
         helper.attachToRecyclerView(mRecyclerView);
         addChildView(mRecyclerView);
 
-        if (coverColor != Color.TRANSPARENT) {
-            addCoverView(context);
-            setBackground(mMaskView, buildCoverBackground(coverColor));
+        // 用户设置过遮罩颜色则添加遮罩层
+        if (maskColor != Color.TRANSPARENT) {
+            addMaskView(context);
+            setBackground(mMaskView, buildMaskBackground(maskColor));
         }
     }
 
@@ -170,14 +176,14 @@ public class WheelView extends FrameLayout {
         throw new UnsupportedOperationException();
     }
 
-    public void setCoverBackground(Drawable drawable) {
+    public void setMaskBackground(Drawable drawable) {
         if (mMaskView == null) {
-            addCoverView(getContext());
+            addMaskView(getContext());
         }
         setBackground(mMaskView, drawable);
     }
 
-    public void setCoverView(View view) {
+    public void setMaskView(View view) {
         if (view == null) {
             throw new IllegalArgumentException("view == null");
         }
@@ -188,7 +194,7 @@ public class WheelView extends FrameLayout {
         mMaskView = view;
     }
 
-    private void addCoverView(Context context) {
+    private void addMaskView(Context context) {
         mMaskView = new View(context);
         mMaskView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         addChildView(mMaskView);
@@ -199,7 +205,6 @@ public class WheelView extends FrameLayout {
             throw new NullPointerException("adapter == null");
         }
         setRealAdapter(adapter);
-        mAdapter.notifyDataSetChanged();
     }
 
     public void updateItemData(List<?> data) {
@@ -226,7 +231,9 @@ public class WheelView extends FrameLayout {
             if (mListeners == null) {
                 mListeners = new ArrayList<>(4);
             }
-            mListeners.add(listener);
+            if (!mListeners.contains(listener)) {
+                mListeners.add(listener);
+            }
         }
     }
 
@@ -241,7 +248,9 @@ public class WheelView extends FrameLayout {
             if (mObservers == null) {
                 mObservers = new ArrayList<>(4);
             }
-            mObservers.add(observer);
+            if (!mObservers.contains(observer)) {
+                mObservers.add(observer);
+            }
         }
     }
 
@@ -260,12 +269,14 @@ public class WheelView extends FrameLayout {
         super.onLayout(changed, left, top, right, bottom);
         Log.e(TAG, "WheelView.onLayout, changed = " + changed);
         if (changed) {
+            // 计算每个 item 的高度。
             mItemHeight = (bottom - top) / mDisplayCount;
             if (mAdapter != null) {
                 Log.e(TAG, "WheelView.onLayout, changed = true, mAdapter has set");
                 mAdapter.notifyDataSetChanged();
             }
         }
+        // 如果是数据更新触发的 onLayout 需检测中间项的变化。
         if (mDataUpdated) {
             mDataUpdated = false;
             notifyDataStateChanged(true);
@@ -319,6 +330,7 @@ public class WheelView extends FrameLayout {
 
         @Override
         public int getItemViewType(int position) {
+            // 最前面和最后面的 mPlaceholderCount 项均为占位符，不展示任何实质内容。
             if (position < mPlaceholderCount || position >= mData.size() + mPlaceholderCount) {
                 return VIEW_TYPE_PLACE_HOLDER;
             }
@@ -381,15 +393,15 @@ public class WheelView extends FrameLayout {
         }
     }
 
-    private static Drawable buildCoverBackground(@ColorInt int coverColor) {
-        int red = Color.red(coverColor);
-        int green = Color.green(coverColor);
-        int blue = Color.blue(coverColor);
-        int alpha = Color.alpha(coverColor);
+    private static Drawable buildMaskBackground(@ColorInt int maskColor) {
+        int red = Color.red(maskColor);
+        int green = Color.green(maskColor);
+        int blue = Color.blue(maskColor);
+        int alpha = Color.alpha(maskColor);
 
         int quarter = Color.argb((int) (alpha * 0.75), red, green, blue);
         int center = Color.argb((int) (alpha * 0.1), red, green, blue);
-        int[] colors = {coverColor, quarter, center, quarter, coverColor};
+        int[] colors = {maskColor, quarter, center, quarter, maskColor};
         return new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors);
     }
 
@@ -431,7 +443,7 @@ public class WheelView extends FrameLayout {
 
     public static abstract class SafeOnItemSelectedListener implements OnItemSelectedListener {
         @Override
-        public void onItemSelected(int position) {
+        public final void onItemSelected(int position) {
             if (position != WheelView.INVALID_POSITION) {
                 onSafeItemSelected(position);
             }
@@ -441,13 +453,28 @@ public class WheelView extends FrameLayout {
     }
 
     public interface OnItemSelectedListener {
+        /**
+         * 中间项所对应的 position 变化且当前未滚动时被调用。
+         * note: 更新数据时，中间项对应的 position 不一定变化，此时并不会被调用，且此值可能为 {@link WheelView#INVALID_POSITION}
+         *
+         * @see TargetDataObserver
+         */
         void onItemSelected(int position);
     }
 
 
     public interface TargetDataObserver {
+        /**
+         * 中间项数据变化时被调用，包括数据更新了但中间项所对应的 position 没有变化也会被调用。
+         * 如果 {@link WheelView#mRadicalNotify} 为 true 时，即便是在滚动中，只要中间项数据发生变化也会被调用。
+         *
+         * @param position 不可能为 {@link WheelView#INVALID_POSITION}
+         */
         void onDataChanged(int position);
 
+        /**
+         * 中间项数据所对应的 position 变为 {@link WheelView#INVALID_POSITION} 时被调用。
+         */
         void onDataInvalid();
     }
 }

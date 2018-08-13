@@ -25,7 +25,6 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -72,7 +71,7 @@ public class MultiWheelView extends LinearLayout {
         @LayoutRes
         int layout = ta.getResourceId(R.styleable.MultiWheelView_wheelViewLayout, R.layout.wheel_view_layout_multi_wheel_view);
         mCount = ta.getInteger(R.styleable.MultiWheelView_wheelViewCount, 1);
-        boolean updateOnIdle = ta.getBoolean(R.styleable.MultiWheelView_radicalNotify, false);
+        boolean radicalNotify = ta.getBoolean(R.styleable.MultiWheelView_radicalNotify, true);
         ta.recycle();
 
         if (mCount < 1) {
@@ -87,7 +86,7 @@ public class MultiWheelView extends LinearLayout {
             mViews[i] = view;
             mData[i] = new ArrayList<Node>();
             if (i != mCount - 1) {
-                view.mRadicalNotify = updateOnIdle;
+                view.mRadicalNotify = radicalNotify;
                 view.registerTargetDataObserver(new WheelViewDataObserver(i));
             } else {
                 view.mRadicalNotify = false;
@@ -118,16 +117,25 @@ public class MultiWheelView extends LinearLayout {
         return mCount;
     }
 
-    public void setCoverBackground(int index, Drawable drawable) {
+    /**
+     * @see MultiWheelView#getWheelViewCount()
+     */
+    public void setMaskBackground(int index, Drawable drawable) {
         checkIndex(index);
-        mViews[index].setCoverBackground(drawable);
+        mViews[index].setMaskBackground(drawable);
     }
 
-    public void setCoverView(int index, View view) {
+    /**
+     * @see MultiWheelView#getWheelViewCount()
+     */
+    public void setMaskView(int index, View view) {
         checkIndex(index);
-        mViews[index].setCoverView(view);
+        mViews[index].setMaskView(view);
     }
 
+    /**
+     * @see MultiWheelView#getWheelViewCount()
+     */
     public <VH extends WheelView.ItemHolder> void setMultiItemAdapter(int index, MultiItemAdapter<VH> adapter) {
         if (adapter == null) {
             throw new NullPointerException("adapter == null");
@@ -141,7 +149,9 @@ public class MultiWheelView extends LinearLayout {
             if (mListeners == null) {
                 mListeners = new ArrayList<>(4);
             }
-            mListeners.add(listener);
+            if (!mListeners.contains(listener)) {
+                mListeners.add(listener);
+            }
         }
     }
 
@@ -151,6 +161,10 @@ public class MultiWheelView extends LinearLayout {
         }
     }
 
+    /**
+     * 返回所有 {@link WheelView} 中间项所对应的 position，与 {@link WheelView} 的顺序一一对应。
+     * note: 可能存在 {@link WheelView#INVALID_POSITION}
+     */
     public int[] getSelectedPositions() {
         int[] result = new int[mCount];
         for (int i = 0; i < mCount; ++i) {
@@ -217,7 +231,7 @@ public class MultiWheelView extends LinearLayout {
         }
 
         private void updateNextItemData(int position) {
-            Log.e(WheelView.TAG, "updateNextItemData, position = " + position + ", currentIndex = " + mIndex);
+            // 更新下一个 WheelView 的数据。
             List<Node> next = getData(mIndex + 1);
             next.clear();
             next.addAll(position != WheelView.INVALID_POSITION ? getData(mIndex).get(position).children() : Collections.<Node>emptyList());
@@ -238,10 +252,7 @@ public class MultiWheelView extends LinearLayout {
 
         private void notifySelectedChanged() {
             if (mListeners != null) {
-                int[] selectedPositions = new int[mCount];
-                for (int i = 0; i < mCount; ++i) {
-                    selectedPositions[i] = mViews[i].getSelectedItemPosition();
-                }
+                final int[] selectedPositions = getSelectedPositions();
                 for (int i = 0, size = mListeners.size(); i < size; ++i) {
                     mListeners.get(i).onSelectedChanged(selectedPositions);
                 }
@@ -258,7 +269,7 @@ public class MultiWheelView extends LinearLayout {
         public abstract VH onCreateItemHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout);
 
         /**
-         * 默认的数据绑定仅设置文本，且文本是调用 {@link String#valueOf(Object)} 来转换的。
+         * 数据绑定，默认仅设置文本，且文本是调用 {@link Node#contentToString()} 来转换的。
          */
         public abstract void onBindItemHolder(@NonNull VH holder, Node data);
     }
