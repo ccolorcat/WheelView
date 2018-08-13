@@ -24,6 +24,6 @@
     <declare-styleable name="MultiWheelView">
         <attr name="wheelViewLayout" format="reference" />
         <attr name="wheelViewCount" format="integer" />
-        <attr name="updateOnIdle" format="boolean" />
+        <attr name="radicalNotify" format="boolean" />
     </declare-styleable>
 </resources>

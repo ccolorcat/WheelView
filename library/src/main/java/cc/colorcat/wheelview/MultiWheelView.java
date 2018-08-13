@@ -72,7 +72,7 @@ public class MultiWheelView extends LinearLayout {
         @LayoutRes
         int layout = ta.getResourceId(R.styleable.MultiWheelView_wheelViewLayout, R.layout.wheel_view_layout_multi_wheel_view);
         mCount = ta.getInteger(R.styleable.MultiWheelView_wheelViewCount, 1);
-        boolean updateOnIdle = ta.getBoolean(R.styleable.MultiWheelView_updateOnIdle, true);
+        boolean updateOnIdle = ta.getBoolean(R.styleable.MultiWheelView_radicalNotify, false);
         ta.recycle();
 
         if (mCount < 1) {
@@ -87,10 +87,10 @@ public class MultiWheelView extends LinearLayout {
             mViews[i] = view;
             mData[i] = new ArrayList<Node>();
             if (i != mCount - 1) {
-                view.mUpdateOnIdle = updateOnIdle;
+                view.mRadicalNotify = updateOnIdle;
                 view.registerTargetDataObserver(new WheelViewDataObserver(i));
             } else {
-                view.mUpdateOnIdle = true;
+                view.mRadicalNotify = false;
                 view.registerTargetDataObserver(new LastWheelViewDataObserver());
             }
             view.setItemAdapter(new InnerItemAdapter<>(i, new SimpleMultiItemAdapter()));

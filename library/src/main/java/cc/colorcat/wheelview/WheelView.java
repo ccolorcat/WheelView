@@ -55,22 +55,34 @@ public class WheelView extends FrameLayout {
     private static final int VIEW_TYPE_PLACE_HOLDER = 0;
     private static final int VIEW_TYPE_DATA = 1;
 
-    private View mCoverView;
+    // 庶罩，用于实现渐变突出中间项的效果。
+    private View mMaskView;
     private RecyclerView mRecyclerView;
     private LinearLayoutManager mManager;
     private RecyclerView.Adapter mAdapter;
     private List<Object> mData = new ArrayList<>();
+    // 记录数据是否已更新。
+    // 每次更新后会触发 onLayout, 在 onLayout 中处理数据变更后需重置为 false.
     private boolean mDataUpdated = false;
+    // item 的布局，用户未设置则默认为 android.R.layout.simple_list_item_1
     @LayoutRes
     private int mItemLayout;
-    private int mDisplayCount; // 同时显示的 item 数量
-    private int mPlaceholderCount; // 占位的 item 数量，实际 item 数量 = 用户设置的数据的数量 + 2 * mPlaceholderCount
+    // 同时展示的 item 数量，含用于占位的 item.
+    // 此值必须为正奇数，便于上下对称，如果用户设定为偶数需修正之。
+    private int mDisplayCount;
+    // 用于占位的 item 数，为 mDisplayCount 的一半。
+    private int mPlaceholderCount;
+    // item 的高度，其值在 onLayout 中计算，height / mDisplayCount.
     private int mItemHeight = Integer.MIN_VALUE;
-    private int mSelectedPosition = WheelView.INVALID_POSITION; // 正中间的 item 的 position
+    // 正中间的 item 所对应的 position.
+    private int mSelectedPosition = WheelView.INVALID_POSITION;
     private List<OnItemSelectedListener> mListeners;
     private List<TargetDataObserver> mObservers;
+    // 记录滚动状态，如果没有滚动则为 true，否则为 false.
     boolean mScrollStateIdle = true;
-    boolean mUpdateOnIdle = true;
+    // 如果为 true，则即便是在滚动中也会检查中间项的变化状况。
+    // 会影响 TargetDataObserver 被调用的频率。
+    boolean mRadicalNotify = false;
 
     public WheelView(@NonNull Context context) {
         super(context);
@@ -127,7 +139,7 @@ public class WheelView extends FrameLayout {
 
             @Override
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                if (!mUpdateOnIdle) {
+                if (mRadicalNotify) {
                     notifyDataStateChanged(false);
                 }
             }
@@ -138,7 +150,7 @@ public class WheelView extends FrameLayout {
 
         if (coverColor != Color.TRANSPARENT) {
             addCoverView(context);
-            setBackground(mCoverView, buildCoverBackground(coverColor));
+            setBackground(mMaskView, buildCoverBackground(coverColor));
         }
     }
 
@@ -159,27 +171,27 @@ public class WheelView extends FrameLayout {
     }
 
     public void setCoverBackground(Drawable drawable) {
-        if (mCoverView == null) {
+        if (mMaskView == null) {
             addCoverView(getContext());
         }
-        setBackground(mCoverView, drawable);
+        setBackground(mMaskView, drawable);
     }
 
     public void setCoverView(View view) {
         if (view == null) {
             throw new IllegalArgumentException("view == null");
         }
-        if (mCoverView != null) {
-            super.removeView(mCoverView);
+        if (mMaskView != null) {
+            super.removeView(mMaskView);
         }
         addChildView(view);
-        mCoverView = view;
+        mMaskView = view;
     }
 
     private void addCoverView(Context context) {
-        mCoverView = new View(context);
-        mCoverView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-        addChildView(mCoverView);
+        mMaskView = new View(context);
+        mMaskView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        addChildView(mMaskView);
     }
 
     public <VH extends ItemHolder> void setItemAdapter(ItemAdapter<VH> adapter) {
