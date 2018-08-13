@@ -32,6 +32,5 @@
         android:layout_width="match_parent"
         android:layout_height="200dp"
         app:displayCount="5"
-        app:maskColor="#FFFFFF"
-        app:radicalNotify="false" />
+        app:maskColor="#FFFFFF" />
 </LinearLayout>
