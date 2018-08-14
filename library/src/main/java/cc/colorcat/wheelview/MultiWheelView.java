@@ -20,6 +20,7 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
+import android.support.annotation.ColorInt;
 import android.support.annotation.LayoutRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -71,6 +72,7 @@ public class MultiWheelView extends LinearLayout {
         @LayoutRes
         int layout = ta.getResourceId(R.styleable.MultiWheelView_wheelViewLayout, R.layout.wheel_view_layout_multi_wheel_view);
         mCount = ta.getInteger(R.styleable.MultiWheelView_wheelViewCount, 1);
+        int displayCount = ta.getInteger(R.styleable.MultiWheelView_displayCount, -1);
         boolean radicalNotify = ta.getBoolean(R.styleable.MultiWheelView_radicalNotify, true);
         ta.recycle();
 
@@ -83,6 +85,9 @@ public class MultiWheelView extends LinearLayout {
         mViews = new WheelView[mCount];
         for (int i = 0; i < mCount; ++i) {
             WheelView view = (WheelView) inflater.inflate(layout, this, false);
+            if (displayCount > 0) {
+                view.setDisplayCount(displayCount);
+            }
             mViews[i] = view;
             mData[i] = new ArrayList<Node>();
             if (i != mCount - 1) {
@@ -117,30 +122,39 @@ public class MultiWheelView extends LinearLayout {
         return mCount;
     }
 
+    public int getDisplayCount() {
+        return mViews[0].getDisplayCount();
+    }
+
+    public void setDisplayCount(int displayCount) {
+        for (WheelView view : mViews) {
+            view.setDisplayCount(displayCount);
+        }
+    }
+
+    public void setMaskBackground(int index, @ColorInt int color) {
+        mViews[index].setMaskBackground(color);
+    }
+
     /**
      * @see MultiWheelView#getWheelViewCount()
      */
     public void setMaskBackground(int index, Drawable drawable) {
-        checkIndex(index);
         mViews[index].setMaskBackground(drawable);
     }
 
     /**
      * @see MultiWheelView#getWheelViewCount()
      */
-    public void setMaskView(int index, View view) {
-        checkIndex(index);
+    public void setMaskView(int index, @NonNull View view) {
         mViews[index].setMaskView(view);
     }
 
     /**
      * @see MultiWheelView#getWheelViewCount()
      */
-    public <VH extends WheelView.ItemHolder> void setMultiItemAdapter(int index, MultiItemAdapter<VH> adapter) {
-        if (adapter == null) {
-            throw new NullPointerException("adapter == null");
-        }
-        checkIndex(index);
+    public <VH extends WheelView.ItemHolder> void setMultiItemAdapter(int index, @NonNull MultiItemAdapter<VH> adapter) {
+        WheelView.checkNotNull(adapter, "adapter == null");
         mViews[index].setItemAdapter(new InnerItemAdapter<>(index, adapter));
     }
 
@@ -173,7 +187,8 @@ public class MultiWheelView extends LinearLayout {
         return result;
     }
 
-    public void updateData(List<? extends Node> data) {
+    public void updateData(@NonNull List<? extends Node> data) {
+        WheelView.checkNotNull(data, "data == null");
         List<Node> first = getData(0);
         first.clear();
         first.addAll(data);
@@ -185,11 +200,6 @@ public class MultiWheelView extends LinearLayout {
         return (List<Node>) mData[index];
     }
 
-    private void checkIndex(int index) {
-        if (index < 0 || index >= mCount) {
-            throw new IndexOutOfBoundsException(String.format("index[0, %d) = %d", mCount, index));
-        }
-    }
 
     private class InnerItemAdapter<VH extends WheelView.ItemHolder> extends WheelView.ItemAdapter<VH> {
         private final int mIndex;
@@ -263,7 +273,7 @@ public class MultiWheelView extends LinearLayout {
 
     public static abstract class MultiItemAdapter<VH extends WheelView.ItemHolder> {
         /**
-         * @param itemLayout xml 布局中的 itemLayout, 如未指定则为 android.R.layout.simple_list_item_1
+         * @param itemLayout WheelView xml 布局中的 itemLayout, 如未指定则为 android.R.layout.simple_list_item_1
          */
         @NonNull
         public abstract VH onCreateItemHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout);

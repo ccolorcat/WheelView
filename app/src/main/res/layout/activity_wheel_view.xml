@@ -31,6 +31,7 @@
         android:id="@+id/wheel_view"
         android:layout_width="match_parent"
         android:layout_height="200dp"
+        android:layout_marginTop="32dp"
         app:displayCount="5"
         app:maskColor="#FFFFFF" />
 </LinearLayout>

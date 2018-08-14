@@ -32,7 +32,6 @@ import android.support.v7.widget.LinearSnapHelper;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SnapHelper;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -48,8 +47,6 @@ import java.util.List;
  * xx.ch@outlook.com
  */
 public class WheelView extends FrameLayout {
-    public static final String TAG = WheelView.class.getSimpleName();
-
     public static final int INVALID_POSITION = RecyclerView.NO_POSITION;
 
     private static final int VIEW_TYPE_PLACE_HOLDER = 0;
@@ -58,20 +55,23 @@ public class WheelView extends FrameLayout {
     // 庶罩，用于实现渐变突出中间项的效果。
     private View mMaskView;
     private RecyclerView mRecyclerView;
+    private SnapHelper mSnapHelper;
     private LinearLayoutManager mManager;
     private RecyclerView.Adapter mAdapter;
     private List<Object> mData = new ArrayList<>();
     // 记录数据是否已更新。
     // 每次更新后会触发 onLayout, 在 onLayout 中处理数据变更后需重置为 false.
-    private boolean mDataUpdated = false;
+    private boolean mForceNotify = false;
     // item 的布局，用户未设置则默认为 android.R.layout.simple_list_item_1
     @LayoutRes
     private int mItemLayout;
     // 同时展示的 item 数量，含用于占位的 item.
     // 此值必须为正奇数，便于上下对称，如果用户设定为偶数需修正之。
-    private int mDisplayCount;
-    // 用于占位的 item 数，为 mDisplayCount 的一半。
+    private int mDisplayCount = -1;
+    // 用于占位的 item 数，始终为 mDisplayCount 的一半。
     private int mPlaceholderCount;
+    // 设定新的 mDisplayCount 值时，需重新计算 mItemHeight 的值，此时需设为 true，测完之后重置为 false.
+    private boolean mForceLayout = false;
     // item 的高度，其值在 onLayout 中计算，height / mDisplayCount.
     private int mItemHeight = Integer.MIN_VALUE;
     // 正中间的 item 所对应的 position.
@@ -107,24 +107,13 @@ public class WheelView extends FrameLayout {
 
     private void init(Context context, AttributeSet attrs) {
         TypedArray ta = context.obtainStyledAttributes(attrs, R.styleable.WheelView);
-        mDisplayCount = ta.getInteger(R.styleable.WheelView_displayCount, 3);
         mItemLayout = ta.getResourceId(R.styleable.WheelView_itemLayout, android.R.layout.simple_list_item_1);
-        mRadicalNotify = ta.getBoolean(R.styleable.WheelView_radicalNotify, false);
         int maskColor = ta.getColor(R.styleable.WheelView_maskColor, Color.TRANSPARENT);
+        int displayCount = ta.getInteger(R.styleable.WheelView_displayCount, 3);
+        mRadicalNotify = ta.getBoolean(R.styleable.WheelView_radicalNotify, false);
         ta.recycle();
 
-        if (mDisplayCount < 1) {
-            throw new IllegalArgumentException("displayCount must be greater than 0");
-        }
-        // 为偶数，则修正为奇数
-        if ((mDisplayCount & 1) == 0) {
-            if (mDisplayCount > 5) {
-                --mDisplayCount;
-            } else {
-                ++mDisplayCount;
-            }
-        }
-        mPlaceholderCount = mDisplayCount >> 1;
+        setDisplayCount(displayCount, false);
 
         mRecyclerView = new RecyclerView(context);
         mRecyclerView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
@@ -149,8 +138,8 @@ public class WheelView extends FrameLayout {
             }
         });
         // 保证有一个 item 处于整个 RecyclerView 的中间位置。
-        SnapHelper helper = new LinearSnapHelper();
-        helper.attachToRecyclerView(mRecyclerView);
+        mSnapHelper = new LinearSnapHelper();
+        mSnapHelper.attachToRecyclerView(mRecyclerView);
         addChildView(mRecyclerView);
 
         // 用户设置过遮罩颜色则添加遮罩层
@@ -176,6 +165,41 @@ public class WheelView extends FrameLayout {
         throw new UnsupportedOperationException();
     }
 
+    public int getDisplayCount() {
+        return mDisplayCount;
+    }
+
+    public void setDisplayCount(int displayCount) {
+        setDisplayCount(displayCount, true);
+    }
+
+    private void setDisplayCount(int displayCount, boolean forceLayout) {
+        if (displayCount < 1) {
+            throw new IllegalArgumentException("displayCount must be greater than 0");
+        }
+        int count = displayCount;
+        // 为偶数，则修正为奇数，大小向 5 靠拢。
+        if ((count & 1) == 0) {
+            if (count > 5) {
+                --count;
+            } else {
+                ++count;
+            }
+        }
+        if (mDisplayCount != count) {
+            mDisplayCount = count;
+            mPlaceholderCount = mDisplayCount >> 1;
+            mForceLayout = forceLayout;
+            if (mForceLayout) {
+                requestLayout();
+            }
+        }
+    }
+
+    public void setMaskBackground(@ColorInt int color) {
+        setMaskBackground(buildMaskBackground(color));
+    }
+
     public void setMaskBackground(Drawable drawable) {
         if (mMaskView == null) {
             addMaskView(getContext());
@@ -183,10 +207,8 @@ public class WheelView extends FrameLayout {
         setBackground(mMaskView, drawable);
     }
 
-    public void setMaskView(View view) {
-        if (view == null) {
-            throw new IllegalArgumentException("view == null");
-        }
+    public void setMaskView(@NonNull View view) {
+        checkNotNull(view, "view == null");
         if (mMaskView != null) {
             super.removeView(mMaskView);
         }
@@ -200,20 +222,15 @@ public class WheelView extends FrameLayout {
         addChildView(mMaskView);
     }
 
-    public <VH extends ItemHolder> void setItemAdapter(ItemAdapter<VH> adapter) {
-        if (adapter == null) {
-            throw new NullPointerException("adapter == null");
-        }
-        setRealAdapter(adapter);
+    public <VH extends ItemHolder> void setItemAdapter(@NonNull ItemAdapter<VH> adapter) {
+        setRealAdapter(checkNotNull(adapter, "adapter == null"));
     }
 
-    public void updateItemData(List<?> data) {
-        if (data == null) {
-            throw new IllegalArgumentException("data == null");
-        }
+    public void updateItemData(@NonNull List<?> data) {
+        checkNotNull(data, "data == null");
         mData.clear();
         mData.addAll(data);
-        mDataUpdated = true;
+        mForceNotify = true;
         if (mAdapter == null) {
             setRealAdapter(new DefaultItemAdapter());
         } else {
@@ -267,35 +284,62 @@ public class WheelView extends FrameLayout {
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
-        Log.e(TAG, "WheelView.onLayout, changed = " + changed);
-        if (changed) {
-            // 计算每个 item 的高度。
+        if (changed || mForceLayout) {
+            // 计算 item 的高度。
             mItemHeight = (bottom - top) / mDisplayCount;
             if (mAdapter != null) {
-                Log.e(TAG, "WheelView.onLayout, changed = true, mAdapter has set");
                 mAdapter.notifyDataSetChanged();
             }
         }
-        // 如果是数据更新触发的 onLayout 需检测中间项的变化。
-        if (mDataUpdated) {
-            mDataUpdated = false;
+        // 数据更新或 mDisplayCount 发生变化触发的 onLayout 需检测中间项的变化。
+        if (mForceNotify) {
+            mForceNotify = false;
             notifyDataStateChanged(true);
+        }
+        if (mForceLayout) {
+            mForceLayout = false;
+            if (mAdapter != null) {
+                mForceNotify = true;
+            }
         }
     }
 
-    private void notifyDataStateChanged(boolean forceUpdate) {
+    private void notifyDataStateChanged(boolean forceNotify) {
         boolean changed = false;
-        final int selected = mData.isEmpty() ? WheelView.INVALID_POSITION : mManager.findFirstVisibleItemPosition();
+        final int selected = findTargetPosition();
         if (selected != mSelectedPosition) {
             mSelectedPosition = selected;
             changed = true;
         }
-        if (changed || forceUpdate) {
+        if (changed || forceNotify) {
             notifyTargetDataChanged();
         }
         if (changed && mScrollStateIdle) {
             notifyItemSelectedChanged();
         }
+    }
+
+    private int findTargetPosition() {
+        if (mData.isEmpty()) {
+            return WheelView.INVALID_POSITION;
+        }
+        View view = mSnapHelper.findSnapView(mManager);
+        if (view == null) {
+            return WheelView.INVALID_POSITION;
+        }
+        RecyclerView.ViewHolder holder = mRecyclerView.getChildViewHolder(view);
+        if (holder == null) {
+            return WheelView.INVALID_POSITION;
+        }
+        int position = holder.getAdapterPosition();
+        if (position == RecyclerView.NO_POSITION) {
+            return WheelView.INVALID_POSITION;
+        }
+        final int fixed = position - mPlaceholderCount;
+        if (fixed < 0 || fixed >= mData.size()) {
+            return WheelView.INVALID_POSITION;
+        }
+        return fixed;
     }
 
     private void notifyItemSelectedChanged() {
@@ -330,7 +374,7 @@ public class WheelView extends FrameLayout {
 
         @Override
         public int getItemViewType(int position) {
-            // 最前面和最后面的 mPlaceholderCount 项均为占位符，不展示任何实质内容。
+            // 最前面和最后面的 mPlaceholderCount 项均只起占位作用，不展示任何实质内容。
             if (position < mPlaceholderCount || position >= mData.size() + mPlaceholderCount) {
                 return VIEW_TYPE_PLACE_HOLDER;
             }
@@ -346,6 +390,7 @@ public class WheelView extends FrameLayout {
         @Override
         public WheelViewHolder<? extends ItemHolder> onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             if (viewType == VIEW_TYPE_PLACE_HOLDER) {
+                // 占位 View
                 View placeholder = new View(parent.getContext());
                 placeholder.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
                 return new WheelViewHolder<>(new ItemHolder(placeholder));
@@ -358,9 +403,11 @@ public class WheelView extends FrameLayout {
         @Override
         public void onBindViewHolder(@NonNull WheelViewHolder<? extends ItemHolder> holder, int position) {
             if (holder.getItemViewType() == VIEW_TYPE_DATA) {
+                // 非占位 View 需绑定数据，因最前面有 mPlaceholderCount 个 View 用于占位，故：
+                // 数据索引值 = position - mPlaceholderCount
                 mItemAdapter.onBindItemHolder((VH) holder.itemHolder, position - mPlaceholderCount);
             }
-            // 判断当前 item 的高度与测定的高度是否一致，如果不一致则重新设置。
+            // 判断当前 item 的高度与测定的高度是否一致，如果不一致则重新设定。
             ViewGroup.LayoutParams lp = holder.itemView.getLayoutParams();
             if (mItemHeight != Integer.MIN_VALUE && lp.height != mItemHeight) {
                 lp.height = mItemHeight;
@@ -400,9 +447,16 @@ public class WheelView extends FrameLayout {
         int alpha = Color.alpha(maskColor);
 
         int quarter = Color.argb((int) (alpha * 0.75), red, green, blue);
-        int center = Color.argb((int) (alpha * 0.1), red, green, blue);
+        int center = Color.argb(0, red, green, blue);
         int[] colors = {maskColor, quarter, center, quarter, maskColor};
         return new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors);
+    }
+
+    static <T> T checkNotNull(T t, String msg) {
+        if (t == null) {
+            throw new IllegalArgumentException(msg);
+        }
+        return t;
     }
 
 
@@ -435,7 +489,7 @@ public class WheelView extends FrameLayout {
         public abstract VH onCreateItemHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout);
 
         /**
-         * 默认的数据绑定仅设置文本，且文本是调用 {@link String#valueOf(Object)} 来转换的。
+         * 数据绑定，默认仅设置文本，且文本是调用 {@link String#valueOf(Object)} 来转换的。
          */
         public abstract void onBindItemHolder(@NonNull VH holder, int position);
     }

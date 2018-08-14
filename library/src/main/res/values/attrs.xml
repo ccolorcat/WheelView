@@ -16,18 +16,19 @@
 
 <resources>
     <attr name="radicalNotify" format="boolean" />
+    <attr name="displayCount" format="integer" />
 
     <declare-styleable name="WheelView">
-        <attr name="displayCount" format="integer" />
         <attr name="itemLayout" format="reference" />
         <attr name="maskColor" format="color" />
+        <attr name="displayCount" />
         <attr name="radicalNotify" />
     </declare-styleable>
 
     <declare-styleable name="MultiWheelView">
         <attr name="wheelViewLayout" format="reference" />
         <attr name="wheelViewCount" format="integer" />
+        <attr name="displayCount" />
         <attr name="radicalNotify" />
-        <!--<attr name="radicalNotify" format="boolean" />-->
     </declare-styleable>
 </resources>
