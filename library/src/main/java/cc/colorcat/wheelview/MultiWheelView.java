@@ -40,8 +40,10 @@ import java.util.List;
  * xx.ch@outlook.com
  */
 public class MultiWheelView extends LinearLayout {
+    // WheelView 的数量。
     private int mCount;
     private WheelView[] mViews;
+    // 与 mViews 一一对应，提供数据。
     private Object[] mData;
     private List<OnSelectedChangeListener> mListeners;
 
@@ -176,7 +178,7 @@ public class MultiWheelView extends LinearLayout {
     }
 
     /**
-     * 返回所有 {@link WheelView} 中间项所对应的 position，与 {@link WheelView} 的顺序一一对应。
+     * 返回所有 {@link WheelView} 中间项对应的 position，与 {@link WheelView} 的顺序一一对应。
      * note: 可能存在 {@link WheelView#INVALID_POSITION}
      */
     public int[] getSelectedPositions() {
@@ -191,6 +193,9 @@ public class MultiWheelView extends LinearLayout {
         mViews[index].setSelectedPosition(position);
     }
 
+    /**
+     * 如果 positions 长度超过 {@link WheelView} 的数量，则只取前若干项，若不足则只设定前面部分 {@link WheelView}
+     */
     public void setSelectedPositions(int... positions) {
         for (int i = 0, size = Math.min(positions.length, mCount); i < size; ++i) {
             mViews[i].setSelectedPosition(positions[i]);
@@ -202,7 +207,7 @@ public class MultiWheelView extends LinearLayout {
         List<Node> first = getData(0);
         first.clear();
         first.addAll(data);
-        mViews[0].updateItemData(first);
+        mViews[0].updateData(first);
     }
 
     @SuppressWarnings("unchecked")
@@ -255,7 +260,7 @@ public class MultiWheelView extends LinearLayout {
             List<Node> next = getData(mIndex + 1);
             next.clear();
             next.addAll(position != WheelView.INVALID_POSITION ? getData(mIndex).get(position).children() : Collections.<Node>emptyList());
-            mViews[mIndex + 1].updateItemData(next);
+            mViews[mIndex + 1].updateData(next);
         }
     }
 
@@ -289,7 +294,7 @@ public class MultiWheelView extends LinearLayout {
         public abstract VH onCreateItemHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout);
 
         /**
-         * 数据绑定，默认仅设置文本，且文本是调用 {@link Node#contentToString()} 来转换的。
+         * 数据绑定，默认仅设置文本，且文本调用 {@link Node#contentToString()} 转换。
          */
         public abstract void onBindItemHolder(@NonNull VH holder, Node data);
     }
@@ -332,7 +337,7 @@ public class MultiWheelView extends LinearLayout {
     public interface OnSelectedChangeListener {
         /**
          * @param positions 长度等于 xml 布局中 wheelViewCount，且顺次对应。
-         *                  Note: positions 中可能存在 {@link WheelView#INVALID_POSITION} 值，此种情况说明所对应的数据为空。
+         *                  Note: positions 中可能存在 {@link WheelView#INVALID_POSITION}，此种情况说明所对应的数据为空。
          * @see SafeOnSelectedChangeListener
          * @see WheelView#INVALID_POSITION
          */

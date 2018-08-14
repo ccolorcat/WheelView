@@ -89,7 +89,7 @@ public class WheelViewActivity extends AppCompatActivity {
             public void onLoaded(List<Province> provinces) {
                 mProvince.clear();
                 mProvince.addAll(provinces);
-                mWheelView.updateItemData(mProvince);
+                mWheelView.updateData(mProvince);
             }
         });
     }

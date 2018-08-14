@@ -53,16 +53,16 @@ public class WheelView extends FrameLayout {
     private static final int VIEW_TYPE_PLACE_HOLDER = 0;
     private static final int VIEW_TYPE_DATA = 1;
 
-    // 庶罩，用于实现渐变突出中间项的效果。
+    // 庶罩，实现渐变突出中间项的效果。
     private View mMaskView;
     private RecyclerView mRecyclerView;
     private SnapHelper mSnapHelper;
     private LinearLayoutManager mManager;
     private RecyclerView.Adapter mAdapter;
     private final List<Object> mData = new ArrayList<>();
-    // 数据更新和 mDisplayCount 变更等情况下需强制检查中间项的数据变化，此时设定为 true, 检查并处理后需重置为 false.
+    // mData 更新或 mDisplayCount 变更等需强制检查中间项的数据变化，设为 true 以作标记, 处理后重置为 false.
     private boolean mForceNotify = false;
-    // item 的布局，用户未设置则默认为 android.R.layout.simple_list_item_1
+    // item 布局，用户未设置则默认为 android.R.layout.simple_list_item_1
     @LayoutRes
     private int mItemLayout;
     // 同时展示的 item 数量，含用于占位的 item.
@@ -70,18 +70,17 @@ public class WheelView extends FrameLayout {
     private int mDisplayCount = -1;
     // 用于占位的 item 数，始终为 mDisplayCount 的一半。
     private int mPlaceholderCount;
-    // 设定新的 mDisplayCount 值后，需重新计算 mItemHeight 的值，此时需设为 true，处理完后需重置为 false.
+    // mDisplayCount 变更等需重新计算 mItemHeight, 设为 true 以作标记，处理后重置为 false.
     private boolean mForceLayout = false;
     // item 的高度，其值在 onLayout 中计算(height / mDisplayCount).
     private int mItemHeight = Integer.MIN_VALUE;
-    // 正中间的 item 所对应的 position.
+    // 中间的 item 所对应的 position.
     private int mSelectedPosition = WheelView.INVALID_POSITION;
     private List<OnItemSelectedListener> mListeners;
     private List<TargetDataObserver> mObservers;
-    // 记录滚动状态，如果没有滚动则为 true，否则为 false.
+    // 滚动状态，未滚动为 true，否则为 false.
     boolean mScrollStateIdle = true;
-    // 如果为 true，则即便是在滚动中也会检查中间项的变化状况。
-    // 会影响 TargetDataObserver 被调用的频率。
+    // 如果为 true，则即使在滚动中也会检查中间项的变化，会影响 TargetDataObserver 被调用的频率。
     boolean mRadicalNotify = false;
 
     public WheelView(@NonNull Context context) {
@@ -142,7 +141,7 @@ public class WheelView extends FrameLayout {
         mSnapHelper.attachToRecyclerView(mRecyclerView);
         addChildView(mRecyclerView);
 
-        // 用户设置过遮罩颜色则添加遮罩层
+        // 用户设置过遮罩颜色则添加遮罩 View
         if (maskColor != Color.TRANSPARENT) {
             addMaskView(context);
             setBackground(mMaskView, buildMaskBackground(maskColor));
@@ -226,7 +225,7 @@ public class WheelView extends FrameLayout {
         setRealAdapter(checkNotNull(adapter, "adapter == null"));
     }
 
-    public void updateItemData(@NonNull List<?> data) {
+    public void updateData(@NonNull List<?> data) {
         checkNotNull(data, "data == null");
         mData.clear();
         mData.addAll(data);
@@ -282,7 +281,7 @@ public class WheelView extends FrameLayout {
     }
 
     public void setSelectedPosition(int position) {
-        if (mSelectedPosition != position && position >= 0 && position < mData.size() && mAdapter != null) {
+        if (mSelectedPosition != position && position >= 0 && position < mData.size()) {
             LinearSmoothScroller scroller = new StartLinearSmoothScroller(getContext());
             scroller.setTargetPosition(position);
             mManager.startSmoothScroll(scroller);
@@ -299,7 +298,7 @@ public class WheelView extends FrameLayout {
                 mAdapter.notifyDataSetChanged();
             }
         }
-        // 数据更新或 mDisplayCount 发生变化触发的 onLayout 需检测中间项的变化。
+        // 数据更新或 mDisplayCount 变更触发的 onLayout 需检测中间项的变化。
         if (mForceNotify) {
             mForceNotify = false;
             notifyDataStateChanged(true);
@@ -307,7 +306,7 @@ public class WheelView extends FrameLayout {
         if (mForceLayout) {
             mForceLayout = false;
             if (mAdapter != null) {
-                // 重新测定了 mItemHeight 的值且 mAdapter 不为空会再次触发 onLayout，此时需强制检测中间项的变化。
+                // 重新测定 mItemHeight 且 mAdapter 不为空会再次触发 onLayout，此时需强制检测中间项的变化。
                 mForceNotify = true;
             }
         }
@@ -371,7 +370,7 @@ public class WheelView extends FrameLayout {
 
         @Override
         public int getItemViewType(int position) {
-            // 最前面和最后面的 mPlaceholderCount 项均只起占位作用，不展示任何实质内容。
+            // 最前和最后的 mPlaceholderCount 项均只起占位作用，不展示任何实质内容。
             if (position < mPlaceholderCount || position >= mData.size() + mPlaceholderCount) {
                 return VIEW_TYPE_PLACE_HOLDER;
             }
@@ -404,7 +403,7 @@ public class WheelView extends FrameLayout {
                 // 数据索引值 = position - mPlaceholderCount
                 mItemAdapter.onBindItemHolder((VH) holder.itemHolder, position - mPlaceholderCount);
             }
-            // 判断当前 item 的高度与测定的高度是否一致，如果不一致则重新设定。
+            // 判断当前 item 的高度与测定的高度是否一致，如不一致则重新设定。
             ViewGroup.LayoutParams lp = holder.itemView.getLayoutParams();
             if (mItemHeight != Integer.MIN_VALUE && lp.height != mItemHeight) {
                 lp.height = mItemHeight;
@@ -457,6 +456,9 @@ public class WheelView extends FrameLayout {
     }
 
 
+    /**
+     * 滚动时，始终把指定项滚动至最顶端。
+     */
     private static class StartLinearSmoothScroller extends LinearSmoothScroller {
         private StartLinearSmoothScroller(Context context) {
             super(context);
@@ -503,7 +505,7 @@ public class WheelView extends FrameLayout {
         public abstract VH onCreateItemHolder(@NonNull ViewGroup parent, @LayoutRes int itemLayout);
 
         /**
-         * 数据绑定，默认仅设置文本，且文本是调用 {@link String#valueOf(Object)} 来转换的。
+         * 数据绑定，默认仅设置文本，且文本调用 {@link String#valueOf(Object)} 转换。
          */
         public abstract void onBindItemHolder(@NonNull VH holder, int position);
     }
@@ -517,13 +519,16 @@ public class WheelView extends FrameLayout {
             }
         }
 
+        /**
+         * 仅在 position 有效，即不等于 {@link WheelView#INVALID_POSITION} 时才会被调用。
+         */
         public abstract void onSafeItemSelected(int position);
     }
 
     public interface OnItemSelectedListener {
         /**
-         * 中间项所对应的 position 变化且当前未滚动时被调用。
-         * note: 更新数据时，中间项对应的 position 不一定变化，此时并不会被调用，且此值可能为 {@link WheelView#INVALID_POSITION}
+         * 中间项对应的 position 变化且当前未滚动时调用。
+         * note: 数据更新但中间项对应的 position 不一定变化，此时不会被调用，且 position 可能为 {@link WheelView#INVALID_POSITION}
          *
          * @see TargetDataObserver
          */
@@ -533,8 +538,8 @@ public class WheelView extends FrameLayout {
 
     public interface TargetDataObserver {
         /**
-         * 中间项数据变化时被调用，包括数据更新了但中间项所对应的 position 没有变化也会被调用。
-         * 如果 {@link WheelView#mRadicalNotify} 为 true 时，即便是在滚动中，只要中间项数据发生变化也会被调用。
+         * 中间项数据变化时被调用，只有数据已更新即便对应的 position 无变化也会被调用。
+         * 如果 {@link WheelView#mRadicalNotify} 为 true 时，即使在滚动中，只要中间项数据发生变化也会被调用。
          *
          * @param position 不可能为 {@link WheelView#INVALID_POSITION}
          */
