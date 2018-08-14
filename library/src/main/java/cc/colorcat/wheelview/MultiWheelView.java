@@ -182,9 +182,19 @@ public class MultiWheelView extends LinearLayout {
     public int[] getSelectedPositions() {
         int[] result = new int[mCount];
         for (int i = 0; i < mCount; ++i) {
-            result[i] = mViews[i].getSelectedItemPosition();
+            result[i] = mViews[i].getSelectedPosition();
         }
         return result;
+    }
+
+    public void setSelectedPosition(int index, int position) {
+        mViews[index].setSelectedPosition(position);
+    }
+
+    public void setSelectedPositions(int... positions) {
+        for (int i = 0, size = Math.min(positions.length, mCount); i < size; ++i) {
+            mViews[i].setSelectedPosition(positions[i]);
+        }
     }
 
     public void updateData(@NonNull List<? extends Node> data) {

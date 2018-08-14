@@ -4,4 +4,6 @@
     <string name="time">年 月 日</string>
     <string name="region">省 市 县</string>
     <string name="province">省</string>
+    <string name="input_target_position">input target position</string>
+    <string name="start_scroll">start scroll</string>
 </resources>

@@ -19,7 +19,6 @@ package cc.colorcat.wheelview.sample;
 import android.content.Context;
 import android.os.AsyncTask;
 
-import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
@@ -63,7 +62,6 @@ public class RegionLoader {
 
 
     private static class AsyncLoader extends AsyncTask<Context, Void, List<Province>> {
-        private final Gson mGson = new GsonBuilder().create();
         private final OnLoadedListener mListener;
 
         private AsyncLoader(OnLoadedListener listener) {
@@ -74,7 +72,7 @@ public class RegionLoader {
         protected List<Province> doInBackground(Context... contexts) {
             Reader reader = new InputStreamReader(contexts[0].getResources().openRawResource(R.raw.region));
             TypeToken<List<Province>> token = new TypeToken<List<Province>>() {};
-            return mGson.fromJson(reader, token.getType());
+            return new GsonBuilder().create().fromJson(reader, token.getType());
         }
 
         @Override

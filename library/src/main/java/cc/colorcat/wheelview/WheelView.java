@@ -28,6 +28,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.LinearSmoothScroller;
 import android.support.v7.widget.LinearSnapHelper;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SnapHelper;
@@ -58,9 +59,8 @@ public class WheelView extends FrameLayout {
     private SnapHelper mSnapHelper;
     private LinearLayoutManager mManager;
     private RecyclerView.Adapter mAdapter;
-    private List<Object> mData = new ArrayList<>();
-    // 记录数据是否已更新。
-    // 每次更新后会触发 onLayout, 在 onLayout 中处理数据变更后需重置为 false.
+    private final List<Object> mData = new ArrayList<>();
+    // 数据更新和 mDisplayCount 变更等情况下需强制检查中间项的数据变化，此时设定为 true, 检查并处理后需重置为 false.
     private boolean mForceNotify = false;
     // item 的布局，用户未设置则默认为 android.R.layout.simple_list_item_1
     @LayoutRes
@@ -70,9 +70,9 @@ public class WheelView extends FrameLayout {
     private int mDisplayCount = -1;
     // 用于占位的 item 数，始终为 mDisplayCount 的一半。
     private int mPlaceholderCount;
-    // 设定新的 mDisplayCount 值时，需重新计算 mItemHeight 的值，此时需设为 true，测完之后重置为 false.
+    // 设定新的 mDisplayCount 值后，需重新计算 mItemHeight 的值，此时需设为 true，处理完后需重置为 false.
     private boolean mForceLayout = false;
-    // item 的高度，其值在 onLayout 中计算，height / mDisplayCount.
+    // item 的高度，其值在 onLayout 中计算(height / mDisplayCount).
     private int mItemHeight = Integer.MIN_VALUE;
     // 正中间的 item 所对应的 position.
     private int mSelectedPosition = WheelView.INVALID_POSITION;
@@ -277,8 +277,16 @@ public class WheelView extends FrameLayout {
         }
     }
 
-    public int getSelectedItemPosition() {
+    public int getSelectedPosition() {
         return mSelectedPosition;
+    }
+
+    public void setSelectedPosition(int position) {
+        if (mSelectedPosition != position && position >= 0 && position < mData.size() && mAdapter != null) {
+            LinearSmoothScroller scroller = new StartLinearSmoothScroller(getContext());
+            scroller.setTargetPosition(position);
+            mManager.startSmoothScroll(scroller);
+        }
     }
 
     @Override
@@ -299,6 +307,7 @@ public class WheelView extends FrameLayout {
         if (mForceLayout) {
             mForceLayout = false;
             if (mAdapter != null) {
+                // 重新测定了 mItemHeight 的值且 mAdapter 不为空会再次触发 onLayout，此时需强制检测中间项的变化。
                 mForceNotify = true;
             }
         }
@@ -323,23 +332,11 @@ public class WheelView extends FrameLayout {
         if (mData.isEmpty()) {
             return WheelView.INVALID_POSITION;
         }
-        View view = mSnapHelper.findSnapView(mManager);
-        if (view == null) {
+        int position = mRecyclerView.getChildAdapterPosition(mSnapHelper.findSnapView(mManager)) - mPlaceholderCount;
+        if (position < 0 || position >= mData.size()) {
             return WheelView.INVALID_POSITION;
         }
-        RecyclerView.ViewHolder holder = mRecyclerView.getChildViewHolder(view);
-        if (holder == null) {
-            return WheelView.INVALID_POSITION;
-        }
-        int position = holder.getAdapterPosition();
-        if (position == RecyclerView.NO_POSITION) {
-            return WheelView.INVALID_POSITION;
-        }
-        final int fixed = position - mPlaceholderCount;
-        if (fixed < 0 || fixed >= mData.size()) {
-            return WheelView.INVALID_POSITION;
-        }
-        return fixed;
+        return position;
     }
 
     private void notifyItemSelectedChanged() {
@@ -457,6 +454,23 @@ public class WheelView extends FrameLayout {
             throw new IllegalArgumentException(msg);
         }
         return t;
+    }
+
+
+    private static class StartLinearSmoothScroller extends LinearSmoothScroller {
+        private StartLinearSmoothScroller(Context context) {
+            super(context);
+        }
+
+        @Override
+        protected int getHorizontalSnapPreference() {
+            return LinearSmoothScroller.SNAP_TO_START;
+        }
+
+        @Override
+        protected int getVerticalSnapPreference() {
+            return LinearSmoothScroller.SNAP_TO_START;
+        }
     }
 
 

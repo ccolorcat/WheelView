@@ -34,4 +34,27 @@
         android:layout_marginTop="32dp"
         app:displayCount="5"
         app:maskColor="#FFFFFF" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/et_position"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="@string/input_target_position"
+            android:inputType="number" />
+
+        <Button
+            android:id="@+id/btn_submit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:layout_marginStart="16dp"
+            android:text="@string/start_scroll" />
+    </LinearLayout>
 </LinearLayout>

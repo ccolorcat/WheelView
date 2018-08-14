@@ -21,6 +21,8 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -38,7 +40,6 @@ public class WheelViewActivity extends AppCompatActivity {
         setContentView(R.layout.activity_wheel_view);
 
         final TextView content = findViewById(R.id.tv_content);
-
         mWheelView = findViewById(R.id.wheel_view);
         mWheelView.addOnItemSelectedListener(new WheelView.OnItemSelectedListener() {
             @Override
@@ -47,6 +48,17 @@ public class WheelViewActivity extends AppCompatActivity {
                     content.setText(mProvince.get(position).getName());
                 } else {
                     content.setText("");
+                }
+            }
+        });
+        final EditText number = findViewById(R.id.et_position);
+        findViewById(R.id.btn_submit).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    int position = Integer.parseInt(number.getText().toString().trim());
+                    mWheelView.setSelectedPosition(position);
+                } catch (Exception ignore) {
                 }
             }
         });
