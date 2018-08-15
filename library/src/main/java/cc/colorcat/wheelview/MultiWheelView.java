@@ -120,14 +120,23 @@ public class MultiWheelView extends LinearLayout {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * @return 返回 {@link WheelView} 的数量，对应 xml 布局中的 wheelViewCount 属性。
+     */
     public int getWheelViewCount() {
         return mCount;
     }
 
+    /**
+     * @return 单个 {@link WheelView} 同时展示的 item 数量，对应 xml 布局中的 displayCount 属性。
+     */
     public int getDisplayCount() {
         return mViews[0].getDisplayCount();
     }
 
+    /**
+     * @param displayCount 此值对内部所有的 {@link WheelView} 有效。
+     */
     public void setDisplayCount(int displayCount) {
         for (WheelView view : mViews) {
             view.setDisplayCount(displayCount);

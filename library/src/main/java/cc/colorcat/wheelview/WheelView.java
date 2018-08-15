@@ -164,10 +164,17 @@ public class WheelView extends FrameLayout {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * @return 同时展示的 item 数量。
+     */
     public int getDisplayCount() {
         return mDisplayCount;
     }
 
+    /**
+     * @param displayCount 同时展示的 item 数量。
+     * @throws IllegalArgumentException 如果 displayCount 小于 1 将抛出此异常。
+     */
     public void setDisplayCount(int displayCount) {
         setDisplayCount(displayCount, true);
     }
