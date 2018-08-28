@@ -19,7 +19,6 @@ apply plugin: 'com.github.dcendents.android-maven'
 
 // jitPack
 group = 'com.github.ccolorcat'
-version = '1.0.0'
 
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -43,7 +42,6 @@ android {
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-//    implementation rootProject.ext.supportAppcompat
     implementation rootProject.ext.recyclerView
     testImplementation rootProject.ext.junit
     androidTestImplementation rootProject.ext.testRunner
