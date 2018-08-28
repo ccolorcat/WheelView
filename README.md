@@ -58,7 +58,7 @@
 
 ```groovy
 allprojects {
-    epositories {
+    repositories {
         ...
         maven { url 'https://jitpack.io' }
     }
@@ -69,9 +69,12 @@ allprojects {
 
 ```groovy
 dependencies {
+    implementation 'com.github.ccolorcat:WheelView:v1.0.0'
 }
 ```
 
 ## 5. 版本历史
 
->
+v1.0.0
+
+> 首次正式发布。
