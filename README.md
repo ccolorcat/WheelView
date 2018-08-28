@@ -1,6 +1,6 @@
 # WheelView
 
-适用 Android 开发，提供类 iOS 的滚动选择功能。
+适用 Android 开发，提供类 iOS 的滚动选择、多级联动功能。
 
 ## 1. 特性
 
