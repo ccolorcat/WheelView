@@ -64,6 +64,7 @@ class Month extends TimeNode {
     public List<? extends MultiWheelView.Node> children() {
         if (days == null) {
             Calendar calendar = Calendar.getInstance();
+            calendar.clear();
             calendar.set(Calendar.YEAR, year.value);
             calendar.set(Calendar.MONTH, this.value - 1);
             days = DAYS.get(calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
