@@ -78,6 +78,12 @@ public class WheelView extends FrameLayout {
     private int mSelectedPosition = WheelView.INVALID_POSITION;
     private List<OnItemSelectedListener> mListeners;
     private List<TargetDataObserver> mObservers;
+    private DataFormatter mDefaultDataFormatter = new DataFormatter() {
+        @Override
+        public String format(Object data) {
+            return String.valueOf(data);
+        }
+    };
     // 滚动状态，未滚动为 true，否则为 false.
     boolean mScrollStateIdle = true;
     // 如果为 true，则即使在滚动中也会检查中间项的变化，会影响 TargetDataObserver 被调用的频率。
@@ -230,6 +236,10 @@ public class WheelView extends FrameLayout {
 
     public <VH extends ItemHolder> void setItemAdapter(@NonNull ItemAdapter<VH> adapter) {
         setRealAdapter(checkNotNull(adapter, "adapter == null"));
+    }
+
+    public void setDefaultDataFormatter(@NonNull DataFormatter formatter) {
+        mDefaultDataFormatter = checkNotNull(formatter, "formatter == null");
     }
 
     public void updateData(@NonNull List<?> data) {
@@ -430,7 +440,7 @@ public class WheelView extends FrameLayout {
 
         @Override
         public void onBindItemHolder(@NonNull ItemHolder holder, int position) {
-            holder.textView.setText(String.valueOf(mData.get(position)));
+            holder.textView.setText(mDefaultDataFormatter.format(mData.get(position)));
         }
     }
 
@@ -556,5 +566,10 @@ public class WheelView extends FrameLayout {
          * 中间项数据所对应的 position 变为 {@link WheelView#INVALID_POSITION} 时被调用。
          */
         void onDataInvalid();
+    }
+
+
+    public interface DataFormatter {
+        String format(Object data);
     }
 }
